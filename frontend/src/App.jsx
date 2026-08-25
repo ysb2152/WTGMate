@@ -1,0 +1,1871 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
+const emptyRouteResult = {
+  locations: [],
+  distance: 0,
+  duration: 0,
+  legs: [],
+};
+
+const toLocation = (place, task = '방문', priority = 3) => ({
+  name: place.place_name,
+  task,
+  priority,
+  lat: Number(place.y),
+  lng: Number(place.x),
+  address: place.road_address_name || place.address_name || '',
+});
+
+function LandingOverlay({ onStart }) {
+  return (
+    <div style={landingStyles.overlay}>
+      <style>{`
+        @keyframes routemateFadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .routemate-landing-anim { animation: none !important; }
+        }
+      `}</style>
+
+      <div style={landingStyles.glow} />
+
+      <div className="routemate-landing-anim" style={landingStyles.content}>
+        <div style={landingStyles.icon}>R</div>
+        <h1 style={landingStyles.title}>RouteMate</h1>
+        <p style={landingStyles.subtitle}>Smart Route Planner</p>
+
+        <button
+          type="button"
+          onClick={onStart}
+          style={landingStyles.startButton}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow =
+              '0 10px 26px rgba(99, 91, 255, 0.45)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow =
+              '0 8px 20px rgba(99, 91, 255, 0.35)';
+          }}
+        >
+          시작하기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PlaceCandidateList({ results, title, onSelect, onClose }) {
+  if (!results?.length) {
+    return (
+      <div style={{ fontSize: 12, color: '#94a3b8', padding: '8px 2px' }}>
+        검색 후보가 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.candidateBox}>
+      <div style={styles.candidateHeader}>
+        <strong>📍 {title}</strong>
+        {onClose && (
+          <button type="button" onClick={onClose} style={styles.textButton}>
+            닫기
+          </button>
+        )}
+      </div>
+
+      {results.map((place, index) => (
+        <button
+          type="button"
+          key={`${place.id || place.place_name}-${index}`}
+          onClick={() => onSelect(place)}
+          style={styles.candidateButton}
+        >
+          <div style={{ fontWeight: 700, fontSize: 13 }}>
+            {index + 1}. {place.place_name}
+          </div>
+          {place.category_name && (
+            <div style={styles.categoryText}>{place.category_name}</div>
+          )}
+          <div style={styles.addressText}>
+            📍 {place.road_address_name || place.address_name || '주소 정보 없음'}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PlaceSearchSelector({
+  query,
+  onQueryChange,
+  results,
+  onSearch,
+  onSelect,
+  onClose,
+  placeholder,
+  searching,
+}) {
+  return (
+    <div>
+      <div style={styles.searchRow}>
+        <input
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSearch();
+          }}
+          placeholder={placeholder}
+          style={styles.input}
+        />
+        <button
+          type="button"
+          onClick={onSearch}
+          disabled={searching}
+          style={{ ...styles.primaryButton, width: 82 }}
+        >
+          {searching ? '검색 중' : '검색'}
+        </button>
+      </div>
+
+      {results?.length > 0 && (
+        <PlaceCandidateList
+          results={results}
+          title="출발지를 선택해주세요"
+          onSelect={onSelect}
+          onClose={onClose}
+        />
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const kakaoJavaScriptKey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY;
+
+  const [startInput, setStartInput] = useState('서울역');
+  const [startLocation, setStartLocation] = useState({
+    name: '서울역',
+    task: '출발지',
+    lat: 37.5547,
+    lng: 126.9707,
+    priority: 0,
+    address: '',
+  });
+
+  // "일정 자체"를 보관한다. 현재 선택된 경로 순서와 분리한다.
+  const [locations, setLocations] = useState([]);
+  const [inputText, setInputText] = useState('');
+
+  const [startSearchResults, setStartSearchResults] = useState([]);
+  const [startSearching, setStartSearching] = useState(false);
+
+  const [searchResultsMap, setSearchResultsMap] = useState({});
+  const [placeSearchingMap, setPlaceSearchingMap] = useState({});
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [etaLoading, setEtaLoading] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(false);
+
+  const [travelMode, setTravelMode] = useState('car');
+  const [activeRoute, setActiveRoute] = useState('ai');
+  const [started, setStarted] = useState(false);
+
+  // 세 결과는 서로 덮어쓰지 않는다.
+  const [routeResults, setRouteResults] = useState({
+    ai: null,
+    shortest: null,
+    priority: null,
+  });
+
+  const [isPriorityDirty, setIsPriorityDirty] = useState(false);
+
+  const mapContainer = useRef(null);
+  const mapInstance = useRef(null);
+  const polylineInstance = useRef(null);
+  const markersRef = useRef([]);
+
+  // 일정이 바뀌면 이전 경로 캐시를 무효화한다.
+  const scheduleKey = useMemo(() => {
+    const startKey = [
+      startLocation?.name || '',
+      Number(startLocation?.lat || 0).toFixed(6),
+      Number(startLocation?.lng || 0).toFixed(6),
+    ].join('|');
+
+    const locationsKey = locations
+      .map((loc) =>
+        [
+          loc.name,
+          Number(loc.lat || 0).toFixed(6),
+          Number(loc.lng || 0).toFixed(6),
+          loc.task || '',
+          Number(loc.priority || 3),
+        ].join('|')
+      )
+      .join('||');
+
+    return `${startKey}###${locationsKey}`;
+  }, [startLocation, locations]);
+
+  // 두 경로가 "완전히 같은 방문 순서"인지 비교하기 위한 키.
+  // 이름/좌표가 순서대로 전부 같으면 같은 경로로 취급한다.
+  const routeSequenceKey = (locs) =>
+    (locs || [])
+      .map((loc) =>
+        [
+          loc.name,
+          Number(loc.lat || 0).toFixed(6),
+          Number(loc.lng || 0).toFixed(6),
+        ].join('|')
+      )
+      .join('||');
+
+  const previousScheduleKey = useRef(scheduleKey);
+
+  useEffect(() => {
+    if (previousScheduleKey.current === scheduleKey) return;
+
+    previousScheduleKey.current = scheduleKey;
+
+    setRouteResults({
+      ai: null,
+      shortest: null,
+      priority: null,
+    });
+
+    setActiveRoute('ai');
+    setIsPriorityDirty(false);
+  }, [scheduleKey]);
+
+  const currentRoute = routeResults[activeRoute] || emptyRouteResult;
+
+  // -------------------------------
+  // Kakao Map SDK
+  // -------------------------------
+  const initKakaoMap = () => {
+    if (!mapContainer.current || mapInstance.current) return;
+
+    if (window.kakao?.maps) {
+      window.kakao.maps.load(() => {
+        if (!mapContainer.current || mapInstance.current) return;
+
+        mapInstance.current = new window.kakao.maps.Map(
+          mapContainer.current,
+          {
+            center: new window.kakao.maps.LatLng(37.7634, 126.7746),
+            level: 8,
+          }
+        );
+
+        drawMapElements([startLocation, ...locations]);
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!kakaoJavaScriptKey) {
+      console.error('VITE_KAKAO_JAVASCRIPT_KEY가 .env에 없습니다.');
+      return;
+    }
+
+    if (window.kakao?.maps) {
+      initKakaoMap();
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[data-kakao-maps-sdk="true"]'
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener('load', initKakaoMap);
+      return () => existingScript.removeEventListener('load', initKakaoMap);
+    }
+
+    const script = document.createElement('script');
+    script.src =
+      `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(
+        kakaoJavaScriptKey
+      )}&libraries=services&autoload=false`;
+    script.async = true;
+    script.dataset.kakaoMapsSdk = 'true';
+    script.onload = initKakaoMap;
+    script.onerror = () =>
+      console.error('카카오맵 SDK를 불러오지 못했습니다.');
+
+    document.head.appendChild(script);
+
+    return () => {
+      script.onload = null;
+    };
+  }, [kakaoJavaScriptKey]);
+
+  useEffect(() => {
+    if (mapInstance.current) {
+      drawMapElements(
+        currentRoute.locations?.length
+          ? currentRoute.locations
+          : [startLocation, ...locations]
+      );
+    }
+  }, [startLocation, locations, currentRoute]);
+
+  // -------------------------------
+  // Kakao 장소 검색
+  // -------------------------------
+  const searchKakaoPlaces = (keyword, onSuccess, onFail) => {
+    if (!keyword.trim()) {
+      onFail?.('검색어를 입력해 주세요.');
+      return;
+    }
+
+    if (!window.kakao?.maps?.services) {
+      onFail?.('카카오 장소 검색 서비스가 아직 준비되지 않았습니다.');
+      return;
+    }
+
+    const ps = new window.kakao.maps.services.Places();
+
+    ps.keywordSearch(
+      keyword,
+      (data, status) => {
+        if (
+          status === window.kakao.maps.services.Status.OK &&
+          data.length > 0
+        ) {
+          onSuccess(data);
+        } else {
+          onFail?.(`"${keyword}"에 대한 검색 결과를 찾을 수 없습니다.`);
+        }
+      },
+      { size: 10 }
+    );
+  };
+
+  const handleSearchStartLocation = () => {
+    if (!startInput.trim()) {
+      alert('출발지명을 입력해 주세요.');
+      return;
+    }
+
+    setStartSearching(true);
+    setStartSearchResults([]);
+
+    searchKakaoPlaces(
+      startInput,
+      (data) => {
+        setStartSearchResults(data);
+        setStartSearching(false);
+      },
+      (message) => {
+        setStartSearching(false);
+        alert(message);
+      }
+    );
+  };
+
+  const handleSelectStartPlace = (place) => {
+    const newStart = toLocation(place, '출발지', 0);
+
+    setStartLocation(newStart);
+    setStartInput(place.place_name);
+    setStartSearchResults([]);
+  };
+
+  // -------------------------------
+  // Gemini 장소 추출
+  // -------------------------------
+  const handleParseText = async () => {
+    if (!inputText.trim()) {
+      alert('일정을 입력해 주세요.');
+      return;
+    }
+
+    setLoading(true);
+    setIsVerifying(false);
+    setIsMockMode(false);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/parse-tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_text: inputText }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || '장소 분석 실패');
+      }
+
+      if (data.status !== 'success') {
+        throw new Error(data.message || '장소 분석 실패');
+      }
+
+      const parsedList = Array.isArray(data.data) ? data.data : [];
+
+      if (!parsedList.length) {
+        alert('방문할 장소를 찾지 못했습니다.');
+        return;
+      }
+
+      setLocations(parsedList);
+      setRouteResults({
+        ai: null,
+        shortest: null,
+        priority: null,
+      });
+      setActiveRoute('ai');
+      setIsPriorityDirty(false);
+
+      if (data.is_mock) setIsMockMode(true);
+
+      verifyExtractedLocations(parsedList);
+    } catch (err) {
+      console.error(err);
+      alert(`장소 분석 오류: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyExtractedLocations = (extractedList) => {
+    if (!window.kakao?.maps?.services) {
+      setIsVerifying(true);
+      return;
+    }
+
+    const resultsMap = {};
+    const searchingMap = {};
+
+    extractedList.forEach((_, index) => {
+      searchingMap[index] = true;
+    });
+
+    setSearchResultsMap({});
+    setPlaceSearchingMap(searchingMap);
+
+    let completed = 0;
+
+    const finishOne = () => {
+      completed += 1;
+
+      if (completed === extractedList.length) {
+        setSearchResultsMap({ ...resultsMap });
+        setPlaceSearchingMap({ ...searchingMap });
+        setIsVerifying(true);
+      }
+    };
+
+    extractedList.forEach((item, index) => {
+      searchKakaoPlaces(
+        item.name,
+        (data) => {
+          resultsMap[index] = data;
+          searchingMap[index] = false;
+          finishOne();
+        },
+        () => {
+          resultsMap[index] = [];
+          searchingMap[index] = false;
+          finishOne();
+        }
+      );
+    });
+  };
+
+  const handleSelectPlaceCandidate = (index, selectedPlace) => {
+    setLocations((prev) => {
+      const updated = [...prev];
+      const old = updated[index];
+
+      updated[index] = {
+        ...old,
+        ...toLocation(
+          selectedPlace,
+          old.task || '방문',
+          Number(old.priority) || 3
+        ),
+      };
+
+      return updated;
+    });
+
+    setSearchResultsMap((prev) => ({
+      ...prev,
+      [index]: [],
+    }));
+  };
+
+  const handleConfirmLocations = () => {
+    setIsVerifying(false);
+  };
+
+  // -------------------------------
+  // ETA
+  // -------------------------------
+  const fetchRealEta = async (orderedList, mode = travelMode) => {
+    setEtaLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/route-eta`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ordered_locations: orderedList,
+          travel_mode: mode,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.status !== 'success') {
+        throw new Error(
+          data.detail || data.message || '거리/시간 계산 실패'
+        );
+      }
+
+      return {
+        locations: orderedList,
+        distance: Number(data.total_distance_km || 0),
+        duration: Number(data.total_duration_min || 0),
+        legs: Array.isArray(data.legs) ? data.legs : [],
+        estimated: Boolean(data.estimated),
+        travelMode: mode,
+      };
+    } catch (err) {
+      console.error('ETA 계산 실패:', err);
+      alert(`거리/예상시간 계산에 실패했습니다.\n${err.message}`);
+      return null;
+    } finally {
+      setEtaLoading(false);
+    }
+  };
+
+  // -------------------------------
+  // 경로 계산 공통 함수
+  // -------------------------------
+  const calculateRoute = async (mode, { force = false } = {}) => {
+    if (locations.length < 1) {
+      alert('방문할 장소가 1개 이상 필요합니다.');
+      return;
+    }
+
+    // 같은 일정 + 같은 이동수단에 대한 결과가 있으면 캐시 사용
+    const cached = routeResults[mode];
+
+    if (!force && cached) {
+      setActiveRoute(mode);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        start_location: {
+          ...startLocation,
+          lat: Number(startLocation.lat),
+          lng: Number(startLocation.lng),
+          priority: 0,
+        },
+        locations: locations.map((loc) => ({
+          ...loc,
+          lat: Number(loc.lat),
+          lng: Number(loc.lng),
+          priority: Number(loc.priority) || 3,
+        })),
+        travel_mode: travelMode,
+        optimize_mode: mode,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/optimize-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.status !== 'success') {
+        throw new Error(
+          data.detail || data.message || '경로 계산 실패'
+        );
+      }
+
+      const orderedList = Array.isArray(data.optimized_locations)
+        ? data.optimized_locations
+        : [];
+
+      if (orderedList.length < 2) {
+        throw new Error('경로 결과가 올바르지 않습니다.');
+      }
+
+      // 다른 모드가 이미 완전히 동일한 방문 순서를 계산해뒀다면,
+      // 카카오 실시간 API를 또 호출하지 않고 그 결과를 그대로 재사용한다.
+      // (같은 순서인데 API를 두 번 따로 부르면 실시간 교통상황 반영 때문에
+      //  거리/시간 숫자가 미세하게 달라지는 문제를 방지)
+      const newSequenceKey = routeSequenceKey(orderedList);
+      const reusableEntry = Object.entries(routeResults).find(
+        ([otherMode, otherResult]) =>
+          otherMode !== mode &&
+          otherResult &&
+          otherResult.travelMode === travelMode &&
+          routeSequenceKey(otherResult.locations) === newSequenceKey
+      );
+
+      const result = reusableEntry
+        ? reusableEntry[1]
+        : await fetchRealEta(orderedList, travelMode);
+
+      if (!result) return;
+
+      setRouteResults((prev) => ({
+        ...prev,
+        [mode]: result,
+      }));
+
+      setActiveRoute(mode);
+
+      if (mode === 'priority') {
+        setIsPriorityDirty(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`${routeLabel(mode)} 계산 실패\n${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAiRoute = () => calculateRoute('ai');
+
+  const handleShortestRoute = () => calculateRoute('shortest');
+
+  const handlePriorityRoute = () => {
+    if (!isPriorityDirty) {
+      setActiveRoute('priority');
+      return;
+    }
+
+    calculateRoute('priority', { force: true });
+  };
+
+  // 이동수단이 바뀌면 기존 ETA는 이동수단이 달라졌으므로 새로 계산한다.
+  // 단, 일정 자체는 바꾸지 않는다.
+  const handleTravelModeChange = async (newMode) => {
+    if (newMode === travelMode) return;
+
+    setTravelMode(newMode);
+
+    // 현재 화면에 선택된 결과가 있으면 같은 순서의 새 ETA만 다시 구한다.
+    if (currentRoute?.locations?.length > 1) {
+      const result = await fetchRealEta(currentRoute.locations, newMode);
+
+      if (result) {
+        setRouteResults((prev) => ({
+          ...prev,
+          [activeRoute]: result,
+        }));
+      }
+    }
+  };
+
+  // -------------------------------
+  // 우선순위
+  // -------------------------------
+  const updatePriority = (index, value) => {
+    const priority = Number(value);
+
+    setLocations((prev) => {
+      const updated = [...prev];
+
+      if (!updated[index]) return prev;
+
+      updated[index] = {
+        ...updated[index],
+        priority,
+      };
+
+      return updated;
+    });
+
+    // 사용자 우선순위 경로만 무효화.
+    // AI/최단 결과는 그대로 보존한다.
+    setRouteResults((prev) => ({
+      ...prev,
+      priority: null,
+    }));
+
+    setIsPriorityDirty(true);
+    setActiveRoute('priority');
+  };
+
+  // -------------------------------
+  // 지도
+  // -------------------------------
+  const drawMapElements = (locs) => {
+    if (!mapInstance.current || !window.kakao?.maps) return;
+
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+
+    if (polylineInstance.current) {
+      polylineInstance.current.setMap(null);
+      polylineInstance.current = null;
+    }
+
+    const bounds = new window.kakao.maps.LatLngBounds();
+    const linePath = [];
+
+    locs.forEach((loc, idx) => {
+      const lat = Number(loc.lat);
+      const lng = Number(loc.lng);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const position = new window.kakao.maps.LatLng(lat, lng);
+
+      const marker = new window.kakao.maps.Marker({
+        position,
+        map: mapInstance.current,
+        title:
+          idx === 0
+            ? `출발 | ${loc.name}`
+            : `${idx}. ${loc.name}`,
+      });
+
+      markersRef.current.push(marker);
+      linePath.push(position);
+      bounds.extend(position);
+    });
+
+    if (linePath.length > 1) {
+      polylineInstance.current = new window.kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: 5,
+        strokeColor: '#635BFF',
+        strokeOpacity: 0.8,
+        strokeStyle: 'solid',
+      });
+
+      polylineInstance.current.setMap(mapInstance.current);
+    }
+
+    if (!bounds.isEmpty()) {
+      mapInstance.current.setBounds(bounds, 60, 60, 60, 60);
+    }
+  };
+
+  // -------------------------------
+  // UI helpers
+  // -------------------------------
+  const routeLabel = (mode) => {
+    if (mode === 'ai') return 'AI 추천 경로';
+    if (mode === 'shortest') return '추천 최단시간 경로';
+    return '우선순위 반영 경로';
+  };
+
+  const routeDescription = (mode) => {
+    if (mode === 'ai') {
+      return 'AI가 판단한 일정 중요도와 이동시간을 함께 고려합니다.';
+    }
+
+    if (mode === 'shortest') {
+      return '우선순위를 무시하고 총 이동시간이 가장 짧은 경로를 찾습니다.';
+    }
+
+    return '사용자가 직접 설정한 현재 우선순위를 반영합니다.';
+  };
+
+  const formatDuration = (minutes) => {
+    const value = Number(minutes || 0);
+
+    if (value <= 0) return '계산 전';
+
+    const hour = Math.floor(value / 60);
+    const minute = value % 60;
+
+    if (hour > 0) {
+      return minute > 0 ? `${hour}시간 ${minute}분` : `${hour}시간`;
+    }
+
+    return `${minute}분`;
+  };
+
+  const getPriorityText = (priority) => {
+    const map = {
+      1: '매우 중요',
+      2: '중요',
+      3: '보통',
+      4: '여유',
+      5: '낮음',
+    };
+
+    return map[Number(priority)] || '보통';
+  };
+
+  const routeCards = [
+    {
+      id: 'ai',
+      icon: '⚡',
+      title: 'AI 추천',
+      description: routeDescription('ai'),
+    },
+    {
+      id: 'shortest',
+      icon: '🏁',
+      title: '최단시간',
+      description: routeDescription('shortest'),
+    },
+    {
+      id: 'priority',
+      icon: '🎯',
+      title: '내 우선순위',
+      description: routeDescription('priority'),
+    },
+  ];
+
+  return (
+    <div style={styles.app}>
+      {!started && <LandingOverlay onStart={() => setStarted(true)} />}
+
+      <aside style={styles.sidebar}>
+        <div
+          style={{ ...styles.brand, cursor: 'pointer' }}
+          onClick={() => window.location.reload()}
+          title="새로고침"
+        >
+          <div style={styles.brandIcon}>R</div>
+          <div>
+            <div style={styles.brandName}>RouteMate</div>
+            <div style={styles.brandSub}>Smart Route Planner</div>
+          </div>
+        </div>
+
+        <div style={styles.scrollContent}>
+          <section style={styles.section}>
+            <div style={styles.sectionLabel}>01 · 출발지</div>
+            <div style={styles.panel}>
+              <PlaceSearchSelector
+                query={startInput}
+                onQueryChange={setStartInput}
+                results={startSearchResults}
+                onSearch={handleSearchStartLocation}
+                onSelect={handleSelectStartPlace}
+                onClose={() => setStartSearchResults([])}
+                placeholder="예: 금촌역, 서울역"
+                searching={startSearching}
+              />
+
+              <div style={styles.currentLocation}>
+                <span>현재 출발지</span>
+                <strong>{startLocation?.name || '설정되지 않음'}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionLabel}>02 · 이동수단</div>
+            <div style={styles.modeGrid}>
+              {[
+                ['car', '🚗', '자동차'],
+                ['walk', '🚶', '도보'],
+                ['transit', '🚌', '대중교통'],
+              ].map(([value, icon, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleTravelModeChange(value)}
+                  style={{
+                    ...styles.modeButton,
+                    ...(travelMode === value
+                      ? styles.modeButtonActive
+                      : {}),
+                  }}
+                >
+                  <span>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionLabel}>03 · 일정 입력</div>
+
+            <div style={styles.panel}>
+              <textarea
+                rows={4}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="예: 강남역에서 미팅하고 홍대에서 친구를 만난 뒤 서울역에서 KTX를 타야 해"
+                style={styles.textarea}
+              />
+
+              <button
+                type="button"
+                onClick={handleParseText}
+                disabled={loading}
+                style={styles.primaryButton}
+              >
+                {loading ? '장소 분석 중...' : '✨ AI로 장소 추출하기'}
+              </button>
+            </div>
+          </section>
+
+          {isMockMode && (
+            <div style={styles.warning}>
+              <strong>테스트 데이터 사용 중</strong>
+              <div>Gemini API 한도 또는 설정 문제로 Mock 데이터가 사용되었습니다.</div>
+            </div>
+          )}
+
+          {isVerifying && locations.length > 0 && (
+            <section style={styles.verifyPanel}>
+              <div style={styles.verifyTitle}>🔍 장소 확인</div>
+              <div style={styles.verifyDesc}>
+                AI가 추출한 장소가 정확한지 확인해주세요. 다른 위치라면 검색 후보를 선택할 수 있습니다.
+              </div>
+
+              {locations.map((loc, idx) => (
+                <div key={`${loc.name}-${idx}`} style={styles.verifyItem}>
+                  <div style={styles.placeTitle}>
+                    <span style={styles.numberBadge}>{idx + 1}</span>
+                    <strong>{loc.name}</strong>
+                    <span style={styles.taskText}>{loc.task}</span>
+                  </div>
+
+                  {loc.address && (
+                    <div style={styles.smallText}>📍 {loc.address}</div>
+                  )}
+
+                  {placeSearchingMap[idx] ? (
+                    <div style={styles.smallText}>장소 후보 검색 중...</div>
+                  ) : (
+                    <PlaceCandidateList
+                      results={searchResultsMap[idx] || []}
+                      title="다른 위치라면 선택"
+                      onSelect={(selected) =>
+                        handleSelectPlaceCandidate(idx, selected)
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={handleConfirmLocations}
+                style={styles.successButton}
+              >
+                장소 확정하기
+              </button>
+            </section>
+          )}
+
+          {!isVerifying && locations.length > 0 && (
+            <>
+              <section style={styles.section}>
+                <div style={styles.sectionHeader}>
+                  <div>
+                    <div style={styles.sectionLabel}>04 · 경로 비교</div>
+                    <h2 style={styles.sectionTitle}>어떤 경로가 좋을까요?</h2>
+                  </div>
+                </div>
+
+                <div style={styles.routeTabs}>
+                  {routeCards.map((card) => {
+                    const result = routeResults[card.id];
+                    const isActive = activeRoute === card.id;
+                    const isDirty = card.id === 'priority' && isPriorityDirty;
+
+                    return (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => {
+                          if (card.id === 'priority' && isPriorityDirty) {
+                            handlePriorityRoute();
+                          } else {
+                            calculateRoute(card.id);
+                          }
+                        }}
+                        disabled={loading || etaLoading}
+                        style={{
+                          ...styles.routeTab,
+                          ...(isActive ? styles.routeTabActive : {}),
+                        }}
+                      >
+                        <div style={styles.routeTabTop}>
+                          <span style={styles.routeIcon}>{card.icon}</span>
+                          <span>{card.title}</span>
+                          {isDirty && <span style={styles.dot}>!</span>}
+                        </div>
+
+                        <div style={styles.routeTabStatus}>
+                          {result ? '계산 완료 · 다시 계산하지 않음' : '아직 계산하지 않음'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={styles.routeHint}>
+                  각 경로를 눌러 결과를 비교할 수 있습니다. 이미 계산한 경로는 일정이 바뀌기 전까지 다시 계산하지 않습니다.
+                </div>
+
+                {isPriorityDirty && (
+                  <div style={styles.priorityAlert}>
+                    <div>
+                      <strong style={{ display: 'block' }}>   
+                        우선순위가 변경되었습니다.  
+                      </strong>
+                      <span style={styles.priorityAlertText}>    
+                        현재 설정을 반영하려면 다시 계산해주세요.  
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handlePriorityRoute}
+                      disabled={loading || etaLoading}
+                      style={styles.priorityButton}
+                    >
+                      🔄 다시 계산
+                    </button>
+                  </div>
+                )}
+              </section>
+
+              <section style={styles.resultCard}>
+                <div style={styles.resultHeader}>
+                  <div>
+                    <div style={styles.resultEyebrow}>
+                      {routeCards.find((x) => x.id === activeRoute)?.icon}{' '}
+                      현재 선택된 추천
+                    </div>
+                    <h2 style={styles.resultTitle}>
+                      {routeLabel(activeRoute)}
+                    </h2>
+                  </div>
+
+                  {etaLoading && (
+                    <span style={styles.loadingPill}>계산 중...</span>
+                  )}
+                </div>
+
+                <div style={styles.metricGrid}>
+                  <div style={styles.metric}>
+                    <span>총 이동거리</span>
+                    <strong>
+                      {currentRoute.distance > 0
+                        ? `${currentRoute.distance.toFixed(1)} km`
+                        : '계산 전'}
+                    </strong>
+                  </div>
+
+                  <div style={styles.metric}>
+                    <span>예상 소요시간</span>
+                    <strong>
+                      {currentRoute.duration > 0
+                        ? formatDuration(currentRoute.duration)
+                        : '계산 전'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div style={styles.resultDescription}>
+                  {routeDescription(activeRoute)}
+                </div>
+
+                {currentRoute.estimated && (
+                  <div style={styles.estimatedNotice}>
+                    현재 이동수단은 보정값을 이용한 예상 시간입니다.
+                  </div>
+                )}
+              </section>
+
+              <section style={styles.section}>
+                <div style={styles.sectionLabel}>05 · 방문 순서</div>
+
+                <div style={styles.timeline}>
+                  {(
+                    currentRoute.locations?.length
+                      ? currentRoute.locations
+                      : [startLocation, ...locations]
+                  ).map((loc, idx) => (
+                    <div
+                      key={`${loc.name}-${idx}`}
+                      style={styles.timelineItem}
+                    >
+                      <div style={styles.timelineMarker}>
+                        {idx === 0 ? '🚩' : idx}
+                      </div>
+
+                      <div style={styles.timelineLine} />
+
+                      <div style={styles.timelineContent}>
+                        <div style={styles.timelineTop}>
+                          <strong>{loc.name}</strong>
+                          {idx > 0 && (
+                            <span
+                              style={{
+                                ...styles.priorityPill,
+                                ...(Number(loc.priority) === 1
+                                  ? styles.priorityHigh
+                                  : {}),
+                              }}
+                            >
+                              {getPriorityText(loc.priority)}
+                            </span>
+                          )}
+                        </div>
+
+                        {idx === 0 ? (
+                          <span style={styles.taskText}>출발지</span>
+                        ) : (
+                          <>
+                            <span style={styles.taskText}>{loc.task}</span>
+
+                            <div style={styles.priorityRow}>
+                              <span>중요도</span>
+                              <select
+                                value={Number(loc.priority) || 3}
+                                onChange={(e) =>
+                                  updatePriority(
+                                    locations.findIndex(
+                                      (item) =>
+                                        item.name === loc.name &&
+                                        Number(item.lat) === Number(loc.lat) &&
+                                        Number(item.lng) === Number(loc.lng)
+                                    ),
+                                    e.target.value
+                                  )
+                                }
+                                style={styles.prioritySelect}
+                              >
+                                <option value={1}>★★★★★ 매우 중요</option>
+                                <option value={2}>★★★★☆ 중요</option>
+                                <option value={3}>★★★☆☆ 보통</option>
+                                <option value={4}>★★☆☆☆ 여유</option>
+                                <option value={5}>★☆☆☆☆ 낮음</option>
+                              </select>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </aside>
+
+      <main style={styles.mapArea}>
+        <div ref={mapContainer} style={styles.map} />
+
+        <div style={styles.mapOverlay}>
+          <div style={styles.mapOverlayTitle}>RouteMate</div>
+          <div style={styles.mapOverlayText}>
+            {locations.length
+              ? `${locations.length}개의 방문 장소`
+              : '일정을 입력하면 추천 경로가 표시됩니다.'}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const landingStyles = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    background:
+      'radial-gradient(circle at 50% 32%, #232c4a 0%, #172033 46%, #0f1526 100%)',
+    fontFamily:
+      'Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  glow: {
+    position: 'absolute',
+    width: 520,
+    height: 520,
+    borderRadius: '50%',
+    background: '#635bff',
+    opacity: 0.22,
+    filter: 'blur(120px)',
+    pointerEvents: 'none',
+  },
+
+  content: {
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    animation: 'routemateFadeUp 0.6s ease-out both',
+  },
+
+  icon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    background: '#635bff',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 800,
+    fontSize: 32,
+    letterSpacing: -0.5,
+    boxShadow: '0 12px 32px rgba(99, 91, 255, 0.4)',
+    marginBottom: 22,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 34,
+    fontWeight: 800,
+    letterSpacing: -1,
+    color: '#fff',
+  },
+
+  subtitle: {
+    margin: '8px 0 36px',
+    fontSize: 13,
+    fontWeight: 700,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: '#9aa3c0',
+  },
+
+  startButton: {
+    minWidth: 180,
+    padding: '14px 40px',
+    border: 'none',
+    borderRadius: 12,
+    background: '#635bff',
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 750,
+    letterSpacing: -0.2,
+    cursor: 'pointer',
+    boxShadow: '0 8px 20px rgba(99, 91, 255, 0.35)',
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+  },
+};
+
+const styles = {
+  app: {
+    display: 'flex',
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden',
+    background: '#f6f7fb',
+    color: '#172033',
+    fontFamily:
+      'Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+
+  sidebar: {
+    width: 470,
+    minWidth: 470,
+    height: '100vh',
+    background: '#f8f9fc',
+    borderRight: '1px solid #e5e7eb',
+    display: 'flex',
+    flexDirection: 'column',
+    zIndex: 5,
+  },
+
+  brand: {
+    height: 76,
+    boxSizing: 'border-box',
+    padding: '0 22px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    background: '#fff',
+    borderBottom: '1px solid #e5e7eb',
+  },
+
+  brandIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    background: '#635bff',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 800,
+    fontSize: 18,
+  },
+
+  brandName: {
+    fontSize: 18,
+    fontWeight: 800,
+    letterSpacing: -0.5,
+  },
+
+  brandSub: {
+    fontSize: 11,
+    color: '#98a2b3',
+    marginTop: 2,
+  },
+
+  scrollContent: {
+    overflowY: 'auto',
+    padding: '20px 18px 36px',
+  },
+
+  section: {
+    marginBottom: 20,
+  },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: '#7c8799',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: 20,
+    letterSpacing: -0.7,
+  },
+
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'end',
+    marginBottom: 10,
+  },
+
+  panel: {
+    background: '#fff',
+    border: '1px solid #e6e9ef',
+    borderRadius: 14,
+    padding: 14,
+    boxShadow: '0 3px 12px rgba(20, 30, 55, 0.04)',
+  },
+
+  searchRow: {
+    display: 'flex',
+    gap: 7,
+  },
+
+  input: {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
+    boxSizing: 'border-box',
+    padding: '0 11px',
+    border: '1px solid #d9dee8',
+    borderRadius: 9,
+    outline: 'none',
+    fontSize: 13,
+  },
+
+  textarea: {
+    width: '100%',
+    minHeight: 94,
+    boxSizing: 'border-box',
+    resize: 'vertical',
+    padding: 12,
+    border: '1px solid #d9dee8',
+    borderRadius: 10,
+    outline: 'none',
+    fontSize: 13,
+    lineHeight: 1.55,
+    marginBottom: 9,
+  },
+
+  primaryButton: {
+    width: '100%',
+    minHeight: 40,
+    border: 'none',
+    borderRadius: 9,
+    background: '#635bff',
+    color: '#fff',
+    fontWeight: 750,
+    cursor: 'pointer',
+    boxShadow: '0 5px 12px rgba(99, 91, 255, 0.2)',
+  },
+
+  successButton: {
+    width: '100%',
+    minHeight: 42,
+    border: 'none',
+    borderRadius: 9,
+    background: '#16a36a',
+    color: '#fff',
+    fontWeight: 750,
+    cursor: 'pointer',
+  },
+
+  currentLocation: {
+    marginTop: 10,
+    padding: '9px 10px',
+    background: '#f7f8fb',
+    borderRadius: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 10,
+    fontSize: 11,
+    color: '#7b8494',
+  },
+
+  modeGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 7,
+  },
+
+  modeButton: {
+    minHeight: 54,
+    border: '1px solid #e0e4eb',
+    borderRadius: 10,
+    background: '#fff',
+    color: '#5c6677',
+    cursor: 'pointer',
+    fontWeight: 650,
+    fontSize: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+
+  modeButtonActive: {
+    border: '1.5px solid #635bff',
+    background: '#f1f0ff',
+    color: '#5149d8',
+  },
+
+  warning: {
+    padding: '11px 12px',
+    marginBottom: 16,
+    borderRadius: 10,
+    background: '#fff8e7',
+    border: '1px solid #f6dfaa',
+    color: '#8a6414',
+    fontSize: 11,
+    lineHeight: 1.5,
+  },
+
+  verifyPanel: {
+    marginBottom: 20,
+    padding: 14,
+    borderRadius: 14,
+    background: '#fffaf0',
+    border: '1px solid #f1dfad',
+  },
+
+  verifyTitle: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: '#805d13',
+  },
+
+  verifyDesc: {
+    marginTop: 5,
+    marginBottom: 12,
+    fontSize: 11,
+    color: '#8a7a5c',
+    lineHeight: 1.5,
+  },
+
+  verifyItem: {
+    background: '#fff',
+    border: '1px solid #eee5d1',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+
+  placeTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    fontSize: 13,
+  },
+
+  numberBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    background: '#635bff',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 11,
+    fontWeight: 800,
+  },
+
+  taskText: {
+    fontSize: 11,
+    color: '#8b94a3',
+  },
+
+  smallText: {
+    fontSize: 10,
+    color: '#8b94a3',
+    marginTop: 6,
+  },
+
+  candidateBox: {
+    marginTop: 9,
+    background: '#f8f9fc',
+    border: '1px solid #e5e8ef',
+    borderRadius: 9,
+    padding: 8,
+  },
+
+  candidateHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: 11,
+    color: '#596579',
+    marginBottom: 6,
+  },
+
+  candidateButton: {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: 9,
+    marginBottom: 5,
+    border: '1px solid #e0e4eb',
+    borderRadius: 8,
+    cursor: 'pointer',
+    background: '#fff',
+  },
+
+  categoryText: {
+    fontSize: 10,
+    color: '#635bff',
+    marginTop: 3,
+  },
+
+  addressText: {
+    fontSize: 10,
+    color: '#7b8494',
+    lineHeight: 1.4,
+    marginTop: 3,
+  },
+
+  textButton: {
+    border: 'none',
+    background: 'transparent',
+    color: '#8b94a3',
+    cursor: 'pointer',
+    fontSize: 10,
+  },
+
+  routeTabs: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 7,
+  },
+
+  routeTab: {
+    minWidth: 0,
+    textAlign: 'left',
+    border: '1px solid #e0e4eb',
+    background: '#fff',
+    borderRadius: 11,
+    padding: '11px 9px',
+    cursor: 'pointer',
+    color: '#485366',
+  },
+
+  routeTabActive: {
+    border: '1.5px solid #635bff',
+    background: '#f5f4ff',
+    color: '#4d45cc',
+    boxShadow: '0 4px 12px rgba(99, 91, 255, 0.08)',
+  },
+
+  routeTabTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
+  routeIcon: {
+    fontSize: 14,
+  },
+
+  dot: {
+    width: 15,
+    height: 15,
+    borderRadius: '50%',
+    background: '#ef4444',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 9,
+    marginLeft: 'auto',
+  },
+
+  routeTabStatus: {
+    fontSize: 9,
+    color: '#99a2b1',
+    marginTop: 7,
+    lineHeight: 1.35,
+  },
+
+  routeHint: {
+    marginTop: 8,
+    fontSize: 10,
+    color: '#8a93a2',
+    lineHeight: 1.5,
+  },
+
+  priorityAlert: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    background: '#fff5f1',
+    border: '1px solid #ffd8cb',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    fontSize: 11,
+    color: '#914b39',
+  },
+
+  priorityAlertText: {
+    display: 'block',
+    marginTop: 3,
+  },
+
+  priorityButton: {
+    flexShrink: 0,
+    border: 'none',
+    borderRadius: 8,
+    padding: '8px 10px',
+    background: '#ef6a4c',
+    color: '#fff',
+    fontWeight: 750,
+    cursor: 'pointer',
+    fontSize: 11,
+  },
+
+  resultCard: {
+    background: '#172033',
+    color: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    boxShadow: '0 10px 25px rgba(20, 30, 55, 0.15)',
+  },
+
+  resultHeader: {
+    display: 'flex',
+    alignItems: 'start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+
+  resultEyebrow: {
+    fontSize: 10,
+    color: '#aab3c5',
+    marginBottom: 4,
+  },
+
+  resultTitle: {
+    margin: 0,
+    fontSize: 18,
+    letterSpacing: -0.5,
+  },
+
+  loadingPill: {
+    background: '#33405a',
+    color: '#dbe1ed',
+    borderRadius: 20,
+    padding: '5px 8px',
+    fontSize: 9,
+  },
+
+  metricGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 8,
+    marginTop: 14,
+  },
+
+  metric: {
+    padding: 11,
+    borderRadius: 10,
+    background: '#232e44',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+
+  metricSpan: {
+    color: '#9da7ba',
+  },
+
+  resultDescription: {
+    marginTop: 10,
+    fontSize: 10,
+    color: '#aeb7c8',
+    lineHeight: 1.45,
+  },
+
+  estimatedNotice: {
+    marginTop: 8,
+    fontSize: 9,
+    color: '#f5d58a',
+  },
+
+  timeline: {
+    background: '#fff',
+    borderRadius: 14,
+    border: '1px solid #e6e9ef',
+    padding: '10px 12px',
+  },
+
+  timelineItem: {
+    position: 'relative',
+    display: 'flex',
+    gap: 10,
+    minHeight: 68,
+  },
+
+  timelineMarker: {
+    width: 28,
+    height: 28,
+    flexShrink: 0,
+    borderRadius: '50%',
+    background: '#635bff',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 11,
+    fontWeight: 800,
+    zIndex: 2,
+  },
+
+  timelineLine: {
+    position: 'absolute',
+    left: 13,
+    top: 28,
+    bottom: -2,
+    width: 2,
+    background: '#e4e7ee',
+  },
+
+  timelineContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingBottom: 12,
+  },
+
+  timelineTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    minHeight: 28,
+  },
+
+  priorityPill: {
+    padding: '3px 6px',
+    borderRadius: 20,
+    background: '#f0f2f6',
+    color: '#788294',
+    fontSize: 9,
+  },
+
+  priorityHigh: {
+    background: '#fff0ed',
+    color: '#d94c32',
+  },
+
+  priorityRow: {
+    marginTop: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 10,
+    color: '#8b94a3',
+  },
+
+  prioritySelect: {
+    border: '1px solid #dfe3ea',
+    borderRadius: 6,
+    padding: '4px 5px',
+    background: '#fff',
+    color: '#4d5666',
+    fontSize: 10,
+  },
+
+  mapArea: {
+    position: 'relative',
+    flex: 1,
+    minWidth: 0,
+    height: '100vh',
+    background: '#e8ebf0',
+  },
+
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+
+  mapOverlay: {
+    position: 'absolute',
+    right: 22,
+    top: 20,
+    background: 'rgba(255,255,255,0.94)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(220,224,232,0.9)',
+    borderRadius: 12,
+    padding: '10px 13px',
+    boxShadow: '0 5px 18px rgba(30,40,60,0.08)',
+  },
+
+  mapOverlayTitle: {
+    fontWeight: 850,
+    fontSize: 13,
+  },
+
+  mapOverlayText: {
+    marginTop: 2,
+    color: '#7d8797',
+    fontSize: 10,
+  },
+};
+
+export default App;
