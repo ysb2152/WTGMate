@@ -18,6 +18,8 @@ const toLocation = (place, task = '방문', priority = 3) => ({
   address: place.road_address_name || place.address_name || '',
   duration_min: 0,
   appointment_time: null,
+  // 약속 시각을 LLM이 산문에서 자동 추출했는지 표시(뱃지용). 사용자가 직접 수정하면 false로 내린다.
+  appointment_from_ai: false,
 });
 
 function LandingOverlay({ onStart }) {
@@ -426,6 +428,8 @@ function App() {
         duration_min: Number(item.duration_min) > 0 ? Number(item.duration_min) : 30,
         // 약속 시각: LLM이 추출했으면 그 값, 없으면 사용자가 확인 단계에서 입력.
         appointment_time: item.appointment_time || null,
+        // 값이 LLM에서 왔으면 뱃지로 알려준다(사용자 수정 시 updateAppointment에서 내림).
+        appointment_from_ai: Boolean(item.appointment_time),
       }));
 
       if (!parsedList.length) {
@@ -515,6 +519,7 @@ function App() {
         // 기본값 0/null로 덮어쓰기 때문에 여기서 old 값으로 되살린다)
         duration_min: old.duration_min ?? 0,
         appointment_time: old.appointment_time ?? null,
+        appointment_from_ai: old.appointment_from_ai ?? false,
       };
 
       return updated;
@@ -798,7 +803,8 @@ function App() {
     setLocations((prev) => {
       const updated = [...prev];
       if (!updated[index]) return prev;
-      updated[index] = { ...updated[index], appointment_time: appointment };
+      // 사용자가 직접 손대면 더 이상 'AI 자동입력'이 아니므로 뱃지를 내린다.
+      updated[index] = { ...updated[index], appointment_time: appointment, appointment_from_ai: false };
       return updated;
     });
 
@@ -1108,7 +1114,12 @@ function App() {
                     </label>
 
                     <label style={styles.timeField}>
-                      <span style={styles.timeFieldLabel}>약속 시각 (선택)</span>
+                      <span style={styles.timeFieldLabel}>
+                        약속 시각 (선택)
+                        {loc.appointment_from_ai && loc.appointment_time && (
+                          <span style={styles.aiBadge}>✨ AI 자동입력</span>
+                        )}
+                      </span>
                       <input
                         type="time"
                         value={loc.appointment_time || ''}
@@ -2118,6 +2129,19 @@ const styles = {
   timeFieldLabel: {
     fontSize: 10,
     color: '#8b94a3',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+  },
+
+  aiBadge: {
+    fontSize: 9,
+    fontWeight: 600,
+    color: '#5b3fd6',
+    background: '#efeafc',
+    borderRadius: 5,
+    padding: '1px 5px',
+    whiteSpace: 'nowrap',
   },
 
   durationInputWrap: {
