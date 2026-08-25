@@ -613,7 +613,9 @@ function App() {
   // -------------------------------
   // 경로 계산 공통 함수
   // -------------------------------
-  const calculateRoute = async (mode, { force = false } = {}) => {
+  // travelModeArg: setTravelMode가 비동기라, 이동수단을 막 바꾼 직후 호출할 때
+  // 최신 이동수단을 명시적으로 넘기기 위한 인자(생략하면 현재 상태값 사용).
+  const calculateRoute = async (mode, { force = false, travelModeArg = travelMode } = {}) => {
     if (locations.length < 1) {
       alert('방문할 장소가 1개 이상 필요합니다.');
       return;
@@ -643,7 +645,7 @@ function App() {
           lng: Number(loc.lng),
           priority: Number(loc.priority) || 3,
         })),
-        travel_mode: travelMode,
+        travel_mode: travelModeArg,
         optimize_mode: mode,
         start_time: effectiveStartTime(),
       };
@@ -679,13 +681,13 @@ function App() {
         ([otherMode, otherResult]) =>
           otherMode !== mode &&
           otherResult &&
-          otherResult.travelMode === travelMode &&
+          otherResult.travelMode === travelModeArg &&
           routeSequenceKey(otherResult.locations) === newSequenceKey
       );
 
       const result = reusableEntry
         ? reusableEntry[1]
-        : await fetchRealEta(orderedList, travelMode);
+        : await fetchRealEta(orderedList, travelModeArg);
 
       if (!result) return;
 
@@ -720,23 +722,25 @@ function App() {
     calculateRoute('priority', { force: true });
   };
 
-  // 이동수단이 바뀌면 기존 ETA는 이동수단이 달라졌으므로 새로 계산한다.
-  // 단, 일정 자체는 바꾸지 않는다.
+  // 이동수단이 바뀌면 최적 방문 순서 자체가 달라질 수 있으므로(예: 도보는 직선거리 기반),
+  // 기존 순서에 ETA만 다시 구하지 않고, 캐시를 비운 뒤 현재 선택된 모드를 새 이동수단으로
+  // "재최적화"한다. 나머지 모드는 캐시를 비워 다음에 선택할 때 새로 계산되게 한다.
   const handleTravelModeChange = async (newMode) => {
     if (newMode === travelMode) return;
 
+    const modeToRecalc = activeRoute;
+    const hadRoute = currentRoute?.locations?.length > 1;
+
     setTravelMode(newMode);
+    setRouteResults({ ai: null, shortest: null, priority: null });
+    // 캐시를 비웠으므로 우선순위 경로도 재계산 필요 상태로 둔다(선택 시 새로 계산되도록).
+    // 아래에서 활성 모드가 priority면 calculateRoute가 다시 false로 되돌린다.
+    setIsPriorityDirty(true);
 
-    // 현재 화면에 선택된 결과가 있으면 같은 순서의 새 ETA만 다시 구한다.
-    if (currentRoute?.locations?.length > 1) {
-      const result = await fetchRealEta(currentRoute.locations, newMode);
-
-      if (result) {
-        setRouteResults((prev) => ({
-          ...prev,
-          [activeRoute]: result,
-        }));
-      }
+    // 이미 경로를 계산해 보여주고 있었을 때만 즉시 재최적화한다.
+    // (setTravelMode가 비동기이므로 최신 이동수단을 travelModeArg로 명시해서 넘긴다.)
+    if (hadRoute) {
+      await calculateRoute(modeToRecalc, { force: true, travelModeArg: newMode });
     }
   };
 
