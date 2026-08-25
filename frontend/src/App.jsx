@@ -9,6 +9,21 @@ const emptyRouteResult = {
   legs: [],
 };
 
+// "HH:MM"(24시간제) -> 오전/오후·시(1~12)·분 드롭다운 상태로 분해.
+// 값이 없으면 셋 다 빈 문자열(미선택).
+const apptPartsFromHHMM = (hhmm) => {
+  if (!hhmm || typeof hhmm !== 'string' || !hhmm.includes(':')) {
+    return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
+  }
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
+  }
+  const meridiem = h < 12 ? '오전' : '오후';
+  const hour12 = h % 12 === 0 ? 12 : h % 12; // 0시->12(오전 12시), 12시->12(오후 12시=정오)
+  return { appt_meridiem: meridiem, appt_hour: String(hour12), appt_minute: String(m) };
+};
+
 const toLocation = (place, task = '방문', priority = 3) => ({
   name: place.place_name,
   task,
@@ -18,6 +33,13 @@ const toLocation = (place, task = '방문', priority = 3) => ({
   address: place.road_address_name || place.address_name || '',
   duration_min: 0,
   appointment_time: null,
+  // 약속 시각을 LLM이 산문에서 자동 추출했는지 표시(뱃지용). 사용자가 직접 수정하면 false로 내린다.
+  appointment_from_ai: false,
+  // 약속 시각 입력용 오전/오후·시·분 드롭다운 상태(출발 예정 시각과 동일한 방식).
+  // appointment_time("HH:MM")은 이 셋에서 파생한다.
+  appt_meridiem: '',
+  appt_hour: '',
+  appt_minute: '',
 });
 
 function LandingOverlay({ onStart }) {
@@ -426,6 +448,10 @@ function App() {
         duration_min: Number(item.duration_min) > 0 ? Number(item.duration_min) : 30,
         // 약속 시각: LLM이 추출했으면 그 값, 없으면 사용자가 확인 단계에서 입력.
         appointment_time: item.appointment_time || null,
+        // 값이 LLM에서 왔으면 뱃지로 알려준다(사용자 수정 시 updateAppointmentPart에서 내림).
+        appointment_from_ai: Boolean(item.appointment_time),
+        // 드롭다운 상태도 LLM 값에서 분해해 채운다.
+        ...apptPartsFromHHMM(item.appointment_time),
       }));
 
       if (!parsedList.length) {
@@ -515,6 +541,10 @@ function App() {
         // 기본값 0/null로 덮어쓰기 때문에 여기서 old 값으로 되살린다)
         duration_min: old.duration_min ?? 0,
         appointment_time: old.appointment_time ?? null,
+        appointment_from_ai: old.appointment_from_ai ?? false,
+        appt_meridiem: old.appt_meridiem ?? '',
+        appt_hour: old.appt_hour ?? '',
+        appt_minute: old.appt_minute ?? '',
       };
 
       return updated;
@@ -543,7 +573,7 @@ function App() {
         body: JSON.stringify({
           ordered_locations: orderedList,
           travel_mode: mode,
-          start_time: startTime || null,
+          start_time: effectiveStartTime(),
         }),
       });
 
@@ -583,7 +613,9 @@ function App() {
   // -------------------------------
   // 경로 계산 공통 함수
   // -------------------------------
-  const calculateRoute = async (mode, { force = false } = {}) => {
+  // travelModeArg: setTravelMode가 비동기라, 이동수단을 막 바꾼 직후 호출할 때
+  // 최신 이동수단을 명시적으로 넘기기 위한 인자(생략하면 현재 상태값 사용).
+  const calculateRoute = async (mode, { force = false, travelModeArg = travelMode } = {}) => {
     if (locations.length < 1) {
       alert('방문할 장소가 1개 이상 필요합니다.');
       return;
@@ -613,9 +645,9 @@ function App() {
           lng: Number(loc.lng),
           priority: Number(loc.priority) || 3,
         })),
-        travel_mode: travelMode,
+        travel_mode: travelModeArg,
         optimize_mode: mode,
-        start_time: startTime || null,
+        start_time: effectiveStartTime(),
       };
 
       const res = await fetch(`${API_BASE_URL}/api/optimize-route`, {
@@ -649,13 +681,13 @@ function App() {
         ([otherMode, otherResult]) =>
           otherMode !== mode &&
           otherResult &&
-          otherResult.travelMode === travelMode &&
+          otherResult.travelMode === travelModeArg &&
           routeSequenceKey(otherResult.locations) === newSequenceKey
       );
 
       const result = reusableEntry
         ? reusableEntry[1]
-        : await fetchRealEta(orderedList, travelMode);
+        : await fetchRealEta(orderedList, travelModeArg);
 
       if (!result) return;
 
@@ -690,23 +722,25 @@ function App() {
     calculateRoute('priority', { force: true });
   };
 
-  // 이동수단이 바뀌면 기존 ETA는 이동수단이 달라졌으므로 새로 계산한다.
-  // 단, 일정 자체는 바꾸지 않는다.
+  // 이동수단이 바뀌면 최적 방문 순서 자체가 달라질 수 있으므로(예: 도보는 직선거리 기반),
+  // 기존 순서에 ETA만 다시 구하지 않고, 캐시를 비운 뒤 현재 선택된 모드를 새 이동수단으로
+  // "재최적화"한다. 나머지 모드는 캐시를 비워 다음에 선택할 때 새로 계산되게 한다.
   const handleTravelModeChange = async (newMode) => {
     if (newMode === travelMode) return;
 
+    const modeToRecalc = activeRoute;
+    const hadRoute = currentRoute?.locations?.length > 1;
+
     setTravelMode(newMode);
+    setRouteResults({ ai: null, shortest: null, priority: null });
+    // 캐시를 비웠으므로 우선순위 경로도 재계산 필요 상태로 둔다(선택 시 새로 계산되도록).
+    // 아래에서 활성 모드가 priority면 calculateRoute가 다시 false로 되돌린다.
+    setIsPriorityDirty(true);
 
-    // 현재 화면에 선택된 결과가 있으면 같은 순서의 새 ETA만 다시 구한다.
-    if (currentRoute?.locations?.length > 1) {
-      const result = await fetchRealEta(currentRoute.locations, newMode);
-
-      if (result) {
-        setRouteResults((prev) => ({
-          ...prev,
-          [activeRoute]: result,
-        }));
-      }
+    // 이미 경로를 계산해 보여주고 있었을 때만 즉시 재최적화한다.
+    // (setTravelMode가 비동기이므로 최신 이동수단을 travelModeArg로 명시해서 넘긴다.)
+    if (hadRoute) {
+      await calculateRoute(modeToRecalc, { force: true, travelModeArg: newMode });
     }
   };
 
@@ -756,6 +790,16 @@ function App() {
     return `${String(hour).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
   };
 
+  // 현재 PC 시각을 24시간제 "HH:MM"으로 반환.
+  const currentHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // 최적화/도착시각 계산에 쓸 출발 시각: 사용자가 고른 값이 있으면 그 값,
+  // 없으면 현재 PC 시각을 기준으로 삼는다(요청 시점 기준으로 도착 시각/약속 준수 계산).
+  const effectiveStartTime = () => startTime || currentHHMM();
+
   const updateStartTimePart = (part, value) => {
     const next = {
       meridiem: startMeridiem,
@@ -791,14 +835,44 @@ function App() {
     invalidateAllRoutes();
   };
 
-  const updateAppointment = (index, value) => {
-    // 빈 값이면 약속 없음(null)으로 저장.
-    const appointment = value ? value : null;
+  // 약속 시각 드롭다운(오전오후/시/분) 한 칸을 바꾼다. 셋이 다 채워졌을 때만
+  // appointment_time("HH:MM")이 만들어지고(composeStartTime 재사용), 하나라도 비면 null.
+  const updateAppointmentPart = (index, part, value) => {
+    setLocations((prev) => {
+      const updated = [...prev];
+      const loc = updated[index];
+      if (!loc) return prev;
+      const next = {
+        appt_meridiem: loc.appt_meridiem ?? '',
+        appt_hour: loc.appt_hour ?? '',
+        appt_minute: loc.appt_minute ?? '',
+        [part]: value,
+      };
+      updated[index] = {
+        ...loc,
+        ...next,
+        appointment_time: composeStartTime(next.appt_meridiem, next.appt_hour, next.appt_minute) || null,
+        // 사용자가 직접 손대면 더 이상 'AI 자동입력'이 아니므로 뱃지를 내린다.
+        appointment_from_ai: false,
+      };
+      return updated;
+    });
 
+    invalidateAllRoutes();
+  };
+
+  const clearAppointment = (index) => {
     setLocations((prev) => {
       const updated = [...prev];
       if (!updated[index]) return prev;
-      updated[index] = { ...updated[index], appointment_time: appointment };
+      updated[index] = {
+        ...updated[index],
+        appointment_time: null,
+        appointment_from_ai: false,
+        appt_meridiem: '',
+        appt_hour: '',
+        appt_minute: '',
+      };
       return updated;
     });
 
@@ -1052,6 +1126,8 @@ function App() {
               </div>
               <div style={styles.startTimeHint}>
                 입력하면 약속 시각을 지키도록 경로를 짜고 도착 시각까지 계산합니다. (선택)
+                <br />
+                예정 시각을 선택하지 않으면 현재 시간을 기준으로 반영합니다.
               </div>
 
               <button
@@ -1108,13 +1184,52 @@ function App() {
                     </label>
 
                     <label style={styles.timeField}>
-                      <span style={styles.timeFieldLabel}>약속 시각 (선택)</span>
-                      <input
-                        type="time"
-                        value={loc.appointment_time || ''}
-                        onChange={(e) => updateAppointment(idx, e.target.value)}
-                        style={styles.appointmentInput}
-                      />
+                      <span style={styles.timeFieldLabel}>
+                        약속 시각 (선택)
+                        {loc.appointment_from_ai && loc.appointment_time && (
+                          <span style={styles.aiBadge}>✨ AI 자동입력</span>
+                        )}
+                      </span>
+                      <div style={styles.apptSelectGroup}>
+                        <select
+                          value={loc.appt_meridiem || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_meridiem', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">오전/오후</option>
+                          <option value="오전">오전</option>
+                          <option value="오후">오후</option>
+                        </select>
+                        <select
+                          value={loc.appt_hour || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_hour', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">시</option>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                            <option key={h} value={h}>{h}시</option>
+                          ))}
+                        </select>
+                        <select
+                          value={loc.appt_minute || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_minute', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">분</option>
+                          {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                            <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
+                          ))}
+                        </select>
+                        {loc.appointment_time && (
+                          <button
+                            type="button"
+                            onClick={() => clearAppointment(idx)}
+                            style={styles.timeClearButton}
+                          >
+                            지우기
+                          </button>
+                        )}
+                      </div>
                     </label>
                   </div>
 
@@ -2103,21 +2218,54 @@ const styles = {
   // --- 장소별 체류시간 / 약속시각 (장소 확인) ---
   timeFieldRow: {
     display: 'flex',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 10,
     marginTop: 9,
   },
 
   timeField: {
-    flex: 1,
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
   },
 
+  apptSelectGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    flexWrap: 'wrap',
+  },
+
+  apptSelect: {
+    height: 32,
+    boxSizing: 'border-box',
+    padding: '0 6px',
+    border: '1px solid #d9dee8',
+    borderRadius: 8,
+    outline: 'none',
+    background: '#fff',
+    color: '#172033',
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+
   timeFieldLabel: {
     fontSize: 10,
     color: '#8b94a3',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+  },
+
+  aiBadge: {
+    fontSize: 9,
+    fontWeight: 600,
+    color: '#5b3fd6',
+    background: '#efeafc',
+    borderRadius: 5,
+    padding: '1px 5px',
+    whiteSpace: 'nowrap',
   },
 
   durationInputWrap: {
@@ -2140,17 +2288,6 @@ const styles = {
   durationUnit: {
     fontSize: 11,
     color: '#8b94a3',
-  },
-
-  appointmentInput: {
-    height: 30,
-    boxSizing: 'border-box',
-    padding: '0 8px',
-    border: '1px solid #d9dee8',
-    borderRadius: 7,
-    outline: 'none',
-    fontSize: 12,
-    color: '#172033',
   },
 
   // --- 요약 카드(다크) 안의 시간 정보 ---

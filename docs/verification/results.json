@@ -1,0 +1,4267 @@
+[
+  {
+    "id": 1,
+    "start": "서울역",
+    "schedule": "오후 3시 강남역에서 미팅, 시간 되면 교보문고 들러 책 구경",
+    "start_time_raw": "14:00",
+    "start_time_effective": "14:00",
+    "places": [
+      {
+        "name": "강남역",
+        "priority": 1,
+        "appointment_time": "15:00"
+      },
+      {
+        "name": "교보문고 강남점",
+        "priority": 4,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "서울역",
+          "강남역",
+          "교보문고 강남점"
+        ],
+        "order_priorities": [
+          1,
+          4
+        ],
+        "total_duration_min": 25,
+        "total_distance_km": 12.5,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "15:06",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "강남역",
+            "min": 18.9,
+            "km": 10.72
+          },
+          {
+            "from": "강남역",
+            "to": "교보문고 강남점",
+            "min": 6.2,
+            "km": 1.74
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "서울역",
+          "교보문고 강남점",
+          "강남역"
+        ],
+        "order_priorities": [
+          4,
+          1
+        ],
+        "total_duration_min": 21,
+        "total_distance_km": 12.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "15:00",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "교보문고 강남점",
+            "min": 17.2,
+            "km": 11.01
+          },
+          {
+            "from": "교보문고 강남점",
+            "to": "강남역",
+            "min": 3.6,
+            "km": 0.96
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "서울역",
+          "강남역",
+          "교보문고 강남점"
+        ],
+        "order_priorities": [
+          1,
+          4
+        ],
+        "total_duration_min": 25,
+        "total_distance_km": 12.5,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "15:06",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "강남역",
+            "min": 18.9,
+            "km": 10.72
+          },
+          {
+            "from": "강남역",
+            "to": "교보문고 강남점",
+            "min": 6.2,
+            "km": 1.74
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "서울역",
+          "교보문고 강남점",
+          "강남역"
+        ],
+        "order_priorities": [
+          4,
+          1
+        ],
+        "total_duration_min": 128,
+        "total_distance_km": 9.6,
+        "estimated": true,
+        "appointment_violations": [
+          "강남역"
+        ],
+        "finish_time": "16:08",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "교보문고 강남점",
+            "min": 117.1,
+            "km": 8.78
+          },
+          {
+            "from": "교보문고 강남점",
+            "to": "강남역",
+            "min": 11.4,
+            "km": 0.85
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "서울역",
+          "교보문고 강남점",
+          "강남역"
+        ],
+        "order_priorities": [
+          4,
+          1
+        ],
+        "total_duration_min": 128,
+        "total_distance_km": 9.6,
+        "estimated": true,
+        "appointment_violations": [
+          "강남역"
+        ],
+        "finish_time": "16:08",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "교보문고 강남점",
+            "min": 117.1,
+            "km": 8.78
+          },
+          {
+            "from": "교보문고 강남점",
+            "to": "강남역",
+            "min": 11.4,
+            "km": 0.85
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "서울역",
+          "강남역",
+          "교보문고 강남점"
+        ],
+        "order_priorities": [
+          1,
+          4
+        ],
+        "total_duration_min": 140,
+        "total_distance_km": 10.5,
+        "estimated": true,
+        "appointment_violations": [
+          "강남역"
+        ],
+        "finish_time": "16:20",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "강남역",
+            "min": 128.3,
+            "km": 9.62
+          },
+          {
+            "from": "강남역",
+            "to": "교보문고 강남점",
+            "min": 11.4,
+            "km": 0.85
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "서울역",
+          "강남역",
+          "교보문고 강남점"
+        ],
+        "order_priorities": [
+          1,
+          4
+        ],
+        "total_duration_min": 51,
+        "total_distance_km": 12.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "15:08",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "강남역",
+            "min": 42.4,
+            "km": 11.22
+          },
+          {
+            "from": "강남역",
+            "to": "교보문고 강남점",
+            "min": 8.3,
+            "km": 1.0
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "서울역",
+          "교보문고 강남점",
+          "강남역"
+        ],
+        "order_priorities": [
+          4,
+          1
+        ],
+        "total_duration_min": 47,
+        "total_distance_km": 11.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "15:00",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "교보문고 강남점",
+            "min": 39.2,
+            "km": 10.25
+          },
+          {
+            "from": "교보문고 강남점",
+            "to": "강남역",
+            "min": 8.3,
+            "km": 1.0
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "서울역",
+          "강남역",
+          "교보문고 강남점"
+        ],
+        "order_priorities": [
+          1,
+          4
+        ],
+        "total_duration_min": 51,
+        "total_distance_km": 12.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "15:08",
+        "start_time_used": "14:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "강남역",
+            "min": 42.4,
+            "km": 11.22
+          },
+          {
+            "from": "강남역",
+            "to": "교보문고 강남점",
+            "min": 8.3,
+            "km": 1.0
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=25.1분, total=25분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=20.8분, total=21분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=25.1분, total=25분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=128.5분, total=128분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=128.5분, total=128분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=139.7분, total=140분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=50.7분, total=51분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=47.5분, total=47분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=50.7분, total=51분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=21, ai=25, priority=25"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=128, ai=128, priority=140"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=47, ai=51, priority=51"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[1, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[1, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[1, 4]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=25분, walk=140분, transit=51분"
+      },
+      {
+        "name": "E(약속위반 0) [car/ai]",
+        "pass": true,
+        "detail": "위반=[]"
+      },
+      {
+        "name": "E(약속위반 0) [car/priority]",
+        "pass": true,
+        "detail": "위반=[]"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 25,
+        "total_distance_km": 12.5
+      },
+      "walk": {
+        "total_duration_min": 140,
+        "total_distance_km": 10.5
+      },
+      "transit": {
+        "total_duration_min": 51,
+        "total_distance_km": 12.2
+      }
+    }
+  },
+  {
+    "id": 2,
+    "start": "홍대입구역",
+    "schedule": "여의도 국회의사당 들르고 남산서울타워 구경",
+    "start_time_raw": null,
+    "start_time_effective": null,
+    "places": [
+      {
+        "name": "국회",
+        "priority": 2,
+        "appointment_time": null
+      },
+      {
+        "name": "남산서울타워",
+        "priority": 3,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 18.6,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 10.8,
+            "km": 6.71
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 22.5,
+            "km": 11.87
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 18.6,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 10.8,
+            "km": 6.71
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 22.5,
+            "km": 11.87
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 18.6,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 10.8,
+            "km": 6.71
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 22.5,
+            "km": 11.87
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 156,
+        "total_distance_km": 11.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 46.4,
+            "km": 3.48
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 110.0,
+            "km": 8.25
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 156,
+        "total_distance_km": 11.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 46.4,
+            "km": 3.48
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 110.0,
+            "km": 8.25
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 156,
+        "total_distance_km": 11.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 46.4,
+            "km": 3.48
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 110.0,
+            "km": 8.25
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 56,
+        "total_distance_km": 13.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 18.5,
+            "km": 4.06
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 37.1,
+            "km": 9.62
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 56,
+        "total_distance_km": 13.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 18.5,
+            "km": 4.06
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 37.1,
+            "km": 9.62
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "홍대입구역",
+          "국회",
+          "남산서울타워"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 56,
+        "total_distance_km": 13.7,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "홍대입구역",
+            "to": "국회",
+            "min": 18.5,
+            "km": 4.06
+          },
+          {
+            "from": "국회",
+            "to": "남산서울타워",
+            "min": 37.1,
+            "km": 9.62
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=33.3분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=33.3분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=33.3분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=156.4분, total=156분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=156.4분, total=156분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=156.4분, total=156분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=55.6분, total=56분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=55.6분, total=56분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=55.6분, total=56분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=33, ai=33, priority=33"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=156, ai=156, priority=156"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=56, ai=56, priority=56"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=33분, walk=156분, transit=56분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 33,
+        "total_distance_km": 18.6
+      },
+      "walk": {
+        "total_duration_min": 156,
+        "total_distance_km": 11.7
+      },
+      "transit": {
+        "total_duration_min": 56,
+        "total_distance_km": 13.7
+      }
+    }
+  },
+  {
+    "id": 3,
+    "start": "강남역",
+    "schedule": "서울시청 민원 보고, 광화문에서 점심, 동대문 쇼핑",
+    "start_time_raw": "BLANK",
+    "start_time_effective": "04:24",
+    "places": [
+      {
+        "name": "서울시청",
+        "priority": 1,
+        "appointment_time": null
+      },
+      {
+        "name": "광화문",
+        "priority": 2,
+        "appointment_time": null
+      },
+      {
+        "name": "동대문구청",
+        "priority": 3,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "강남역",
+          "서울시청",
+          "광화문",
+          "동대문구청"
+        ],
+        "order_priorities": [
+          1,
+          2,
+          3
+        ],
+        "total_duration_min": 40,
+        "total_distance_km": 19.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "05:04",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "서울시청",
+            "min": 19.4,
+            "km": 10.11
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 4.1,
+            "km": 1.44
+          },
+          {
+            "from": "광화문",
+            "to": "동대문구청",
+            "min": 16.8,
+            "km": 7.45
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "강남역",
+          "동대문구청",
+          "서울시청",
+          "광화문"
+        ],
+        "order_priorities": [
+          3,
+          1,
+          2
+        ],
+        "total_duration_min": 39,
+        "total_distance_km": 17.7,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "05:03",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "동대문구청",
+            "min": 18.0,
+            "km": 10.05
+          },
+          {
+            "from": "동대문구청",
+            "to": "서울시청",
+            "min": 16.4,
+            "km": 6.17
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 4.1,
+            "km": 1.44
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "강남역",
+          "서울시청",
+          "광화문",
+          "동대문구청"
+        ],
+        "order_priorities": [
+          1,
+          2,
+          3
+        ],
+        "total_duration_min": 40,
+        "total_distance_km": 19.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "05:04",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "서울시청",
+            "min": 19.4,
+            "km": 10.11
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 4.1,
+            "km": 1.44
+          },
+          {
+            "from": "광화문",
+            "to": "동대문구청",
+            "min": 16.8,
+            "km": 7.45
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "강남역",
+          "동대문구청",
+          "서울시청",
+          "광화문"
+        ],
+        "order_priorities": [
+          3,
+          1,
+          2
+        ],
+        "total_duration_min": 240,
+        "total_distance_km": 18.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "08:24",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "동대문구청",
+            "min": 136.8,
+            "km": 10.26
+          },
+          {
+            "from": "동대문구청",
+            "to": "서울시청",
+            "min": 87.2,
+            "km": 6.54
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 16.5,
+            "km": 1.23
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "강남역",
+          "동대문구청",
+          "서울시청",
+          "광화문"
+        ],
+        "order_priorities": [
+          3,
+          1,
+          2
+        ],
+        "total_duration_min": 240,
+        "total_distance_km": 18.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "08:24",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "동대문구청",
+            "min": 136.8,
+            "km": 10.26
+          },
+          {
+            "from": "동대문구청",
+            "to": "서울시청",
+            "min": 87.2,
+            "km": 6.54
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 16.5,
+            "km": 1.23
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "강남역",
+          "서울시청",
+          "광화문",
+          "동대문구청"
+        ],
+        "order_priorities": [
+          1,
+          2,
+          3
+        ],
+        "total_duration_min": 246,
+        "total_distance_km": 18.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "08:30",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "서울시청",
+            "min": 140.7,
+            "km": 10.55
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 16.5,
+            "km": 1.23
+          },
+          {
+            "from": "광화문",
+            "to": "동대문구청",
+            "min": 88.7,
+            "km": 6.65
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "강남역",
+          "서울시청",
+          "광화문",
+          "동대문구청"
+        ],
+        "order_priorities": [
+          1,
+          2,
+          3
+        ],
+        "total_duration_min": 87,
+        "total_distance_km": 21.5,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:51",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "서울시청",
+            "min": 46.0,
+            "km": 12.31
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 9.8,
+            "km": 1.44
+          },
+          {
+            "from": "광화문",
+            "to": "동대문구청",
+            "min": 30.9,
+            "km": 7.76
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "강남역",
+          "동대문구청",
+          "서울시청",
+          "광화문"
+        ],
+        "order_priorities": [
+          3,
+          1,
+          2
+        ],
+        "total_duration_min": 85,
+        "total_distance_km": 21.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:49",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "동대문구청",
+            "min": 44.9,
+            "km": 11.97
+          },
+          {
+            "from": "동대문구청",
+            "to": "서울시청",
+            "min": 30.4,
+            "km": 7.63
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 9.8,
+            "km": 1.44
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "강남역",
+          "서울시청",
+          "광화문",
+          "동대문구청"
+        ],
+        "order_priorities": [
+          1,
+          2,
+          3
+        ],
+        "total_duration_min": 87,
+        "total_distance_km": 21.5,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:51",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "강남역",
+            "to": "서울시청",
+            "min": 46.0,
+            "km": 12.31
+          },
+          {
+            "from": "서울시청",
+            "to": "광화문",
+            "min": 9.8,
+            "km": 1.44
+          },
+          {
+            "from": "광화문",
+            "to": "동대문구청",
+            "min": 30.9,
+            "km": 7.76
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=40.3분, total=40분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=38.5분, total=39분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=40.3분, total=40분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=240.5분, total=240분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=240.5분, total=240분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=245.9분, total=246분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=86.7분, total=87분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=85.1분, total=85분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=86.7분, total=87분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=39, ai=40, priority=40"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=240, ai=240, priority=246"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=85, ai=87, priority=87"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2, 3]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=40분, walk=246분, transit=87분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 40,
+        "total_distance_km": 19.0
+      },
+      "walk": {
+        "total_duration_min": 246,
+        "total_distance_km": 18.4
+      },
+      "transit": {
+        "total_duration_min": 87,
+        "total_distance_km": 21.5
+      }
+    }
+  },
+  {
+    "id": 4,
+    "start": "부산역",
+    "schedule": "해운대 해수욕장 산책하고 저녁 6시 광안리에서 저녁",
+    "start_time_raw": "16:00",
+    "start_time_effective": "16:00",
+    "places": [
+      {
+        "name": "해운대해수욕장",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "광안리해수욕장",
+        "priority": 2,
+        "appointment_time": "18:00"
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 14.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "18:11",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 22.2,
+            "km": 9.87
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 10.8,
+            "km": 4.49
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 14.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "18:11",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 22.2,
+            "km": 9.87
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 10.8,
+            "km": 4.49
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 33,
+        "total_distance_km": 14.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "18:11",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 22.2,
+            "km": 9.87
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 10.8,
+            "km": 4.49
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 192,
+        "total_distance_km": 14.4,
+        "estimated": true,
+        "appointment_violations": [
+          "광안리해수욕장"
+        ],
+        "finish_time": "19:12",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 131.4,
+            "km": 9.85
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 60.2,
+            "km": 4.52
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 192,
+        "total_distance_km": 14.4,
+        "estimated": true,
+        "appointment_violations": [
+          "광안리해수욕장"
+        ],
+        "finish_time": "19:12",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 131.4,
+            "km": 9.85
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 60.2,
+            "km": 4.52
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 192,
+        "total_distance_km": 14.4,
+        "estimated": true,
+        "appointment_violations": [
+          "광안리해수욕장"
+        ],
+        "finish_time": "19:12",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 131.4,
+            "km": 9.85
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 60.2,
+            "km": 4.52
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 66,
+        "total_distance_km": 16.8,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "18:23",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 43.3,
+            "km": 11.5
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 22.6,
+            "km": 5.27
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 66,
+        "total_distance_km": 16.8,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "18:23",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 43.3,
+            "km": 11.5
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 22.6,
+            "km": 5.27
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "부산역",
+          "광안리해수욕장",
+          "해운대해수욕장"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 66,
+        "total_distance_km": 16.8,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "18:23",
+        "start_time_used": "16:00",
+        "legs": [
+          {
+            "from": "부산역",
+            "to": "광안리해수욕장",
+            "min": 43.3,
+            "km": 11.5
+          },
+          {
+            "from": "광안리해수욕장",
+            "to": "해운대해수욕장",
+            "min": 22.6,
+            "km": 5.27
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=33.0분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=33.0분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=33.0분, total=33분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=191.6분, total=192분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=191.6분, total=192분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=191.6분, total=192분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=65.9분, total=66분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=65.9분, total=66분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=65.9분, total=66분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=33, ai=33, priority=33"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=192, ai=192, priority=192"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=66, ai=66, priority=66"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=40분, walk=249분, transit=83분"
+      },
+      {
+        "name": "E(약속위반 0) [car/ai]",
+        "pass": true,
+        "detail": "위반=[]"
+      },
+      {
+        "name": "E(약속위반 0) [car/priority]",
+        "pass": true,
+        "detail": "위반=[]"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 40,
+        "total_distance_km": 22.6
+      },
+      "walk": {
+        "total_duration_min": 249,
+        "total_distance_km": 18.7
+      },
+      "transit": {
+        "total_duration_min": 83,
+        "total_distance_km": 21.8
+      }
+    }
+  },
+  {
+    "id": 5,
+    "start": "잠실역",
+    "schedule": "롯데월드타워 전망대 구경하고 석촌호수 산책",
+    "start_time_raw": null,
+    "start_time_effective": null,
+    "places": [
+      {
+        "name": "롯데월드타워",
+        "priority": 2,
+        "appointment_time": null
+      },
+      {
+        "name": "석촌호수",
+        "priority": 3,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "잠실역",
+          "석촌호수",
+          "롯데월드타워"
+        ],
+        "order_priorities": [
+          3,
+          2
+        ],
+        "total_duration_min": 10,
+        "total_distance_km": 3.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "석촌호수",
+            "min": 5.9,
+            "km": 2.19
+          },
+          {
+            "from": "석촌호수",
+            "to": "롯데월드타워",
+            "min": 3.7,
+            "km": 1.25
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "잠실역",
+          "석촌호수",
+          "롯데월드타워"
+        ],
+        "order_priorities": [
+          3,
+          2
+        ],
+        "total_duration_min": 10,
+        "total_distance_km": 3.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "석촌호수",
+            "min": 5.9,
+            "km": 2.19
+          },
+          {
+            "from": "석촌호수",
+            "to": "롯데월드타워",
+            "min": 3.7,
+            "km": 1.25
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 12,
+        "total_distance_km": 3.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 5.9,
+            "km": 1.67
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 6.4,
+            "km": 1.77
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 3.5,
+            "km": 0.26
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 10.0,
+            "km": 0.75
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 3.5,
+            "km": 0.26
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 10.0,
+            "km": 0.75
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 3.5,
+            "km": 0.26
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 10.0,
+            "km": 0.75
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 6.0,
+            "km": 0.31
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 7.9,
+            "km": 0.88
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 6.0,
+            "km": 0.31
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 7.9,
+            "km": 0.88
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "잠실역",
+          "롯데월드타워",
+          "석촌호수"
+        ],
+        "order_priorities": [
+          2,
+          3
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "잠실역",
+            "to": "롯데월드타워",
+            "min": 6.0,
+            "km": 0.31
+          },
+          {
+            "from": "롯데월드타워",
+            "to": "석촌호수",
+            "min": 7.9,
+            "km": 0.88
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=9.6분, total=10분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=9.6분, total=10분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=12.3분, total=12분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=13.5분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=13.5분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=13.5분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=13.9분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=13.9분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=13.9분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=10, ai=10, priority=12"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=14, ai=14, priority=14"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=14, ai=14, priority=14"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[2, 3]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=12분, walk=14분, transit=14분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 12,
+        "total_distance_km": 3.4
+      },
+      "walk": {
+        "total_duration_min": 14,
+        "total_distance_km": 1.0
+      },
+      "transit": {
+        "total_duration_min": 14,
+        "total_distance_km": 1.2
+      }
+    }
+  },
+  {
+    "id": 6,
+    "start": "수원역",
+    "schedule": "오전 10시 수원화성 관광하고 행궁동 카페에서 커피",
+    "start_time_raw": "09:30",
+    "start_time_effective": "09:30",
+    "places": [
+      {
+        "name": "수원화성",
+        "priority": 1,
+        "appointment_time": "10:00"
+      },
+      {
+        "name": "행궁동 카페",
+        "priority": 2,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "수원역",
+          "행궁동 카페",
+          "수원화성"
+        ],
+        "order_priorities": [
+          2,
+          1
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 4.8,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "10:00",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "행궁동 카페",
+            "min": 10.8,
+            "km": 3.96
+          },
+          {
+            "from": "행궁동 카페",
+            "to": "수원화성",
+            "min": 3.7,
+            "km": 0.81
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "수원역",
+          "행궁동 카페",
+          "수원화성"
+        ],
+        "order_priorities": [
+          2,
+          1
+        ],
+        "total_duration_min": 14,
+        "total_distance_km": 4.8,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "10:00",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "행궁동 카페",
+            "min": 10.8,
+            "km": 3.96
+          },
+          {
+            "from": "행궁동 카페",
+            "to": "수원화성",
+            "min": 3.7,
+            "km": 0.81
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "수원역",
+          "수원화성",
+          "행궁동 카페"
+        ],
+        "order_priorities": [
+          1,
+          2
+        ],
+        "total_duration_min": 17,
+        "total_distance_km": 6.4,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "10:06",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "수원화성",
+            "min": 10.9,
+            "km": 3.99
+          },
+          {
+            "from": "수원화성",
+            "to": "행궁동 카페",
+            "min": 6.0,
+            "km": 2.38
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "수원역",
+          "행궁동 카페",
+          "수원화성"
+        ],
+        "order_priorities": [
+          2,
+          1
+        ],
+        "total_duration_min": 48,
+        "total_distance_km": 3.6,
+        "estimated": true,
+        "appointment_violations": [
+          "수원화성"
+        ],
+        "finish_time": "10:18",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "행궁동 카페",
+            "min": 39.1,
+            "km": 2.93
+          },
+          {
+            "from": "행궁동 카페",
+            "to": "수원화성",
+            "min": 9.0,
+            "km": 0.68
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "수원역",
+          "행궁동 카페",
+          "수원화성"
+        ],
+        "order_priorities": [
+          2,
+          1
+        ],
+        "total_duration_min": 48,
+        "total_distance_km": 3.6,
+        "estimated": true,
+        "appointment_violations": [
+          "수원화성"
+        ],
+        "finish_time": "10:18",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "행궁동 카페",
+            "min": 39.1,
+            "km": 2.93
+          },
+          {
+            "from": "행궁동 카페",
+            "to": "수원화성",
+            "min": 9.0,
+            "km": 0.68
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "수원역",
+          "수원화성",
+          "행궁동 카페"
+        ],
+        "order_priorities": [
+          1,
+          2
+        ],
+        "total_duration_min": 50,
+        "total_distance_km": 3.8,
+        "estimated": true,
+        "appointment_violations": [
+          "수원화성"
+        ],
+        "finish_time": "10:20",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "수원화성",
+            "min": 41.1,
+            "km": 3.09
+          },
+          {
+            "from": "수원화성",
+            "to": "행궁동 카페",
+            "min": 9.0,
+            "km": 0.68
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "수원역",
+          "수원화성",
+          "행궁동 카페"
+        ],
+        "order_priorities": [
+          1,
+          2
+        ],
+        "total_duration_min": 25,
+        "total_distance_km": 4.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "10:08",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "수원화성",
+            "min": 17.0,
+            "km": 3.6
+          },
+          {
+            "from": "수원화성",
+            "to": "행궁동 카페",
+            "min": 7.6,
+            "km": 0.79
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "수원역",
+          "행궁동 카페",
+          "수원화성"
+        ],
+        "order_priorities": [
+          2,
+          1
+        ],
+        "total_duration_min": 24,
+        "total_distance_km": 4.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "10:00",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "행궁동 카페",
+            "min": 16.4,
+            "km": 3.42
+          },
+          {
+            "from": "행궁동 카페",
+            "to": "수원화성",
+            "min": 7.6,
+            "km": 0.79
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "수원역",
+          "수원화성",
+          "행궁동 카페"
+        ],
+        "order_priorities": [
+          1,
+          2
+        ],
+        "total_duration_min": 25,
+        "total_distance_km": 4.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "10:08",
+        "start_time_used": "09:30",
+        "legs": [
+          {
+            "from": "수원역",
+            "to": "수원화성",
+            "min": 17.0,
+            "km": 3.6
+          },
+          {
+            "from": "수원화성",
+            "to": "행궁동 카페",
+            "min": 7.6,
+            "km": 0.79
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=14.5분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=14.5분, total=14분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=16.9분, total=17분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=48.1분, total=48분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=48.1분, total=48분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=50.1분, total=50분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=24.6분, total=25분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=24.0분, total=24분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=24.6분, total=25분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=14, ai=14, priority=17"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=48, ai=48, priority=50"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=24, ai=25, priority=25"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[1, 2]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=17분, walk=50분, transit=25분"
+      },
+      {
+        "name": "E(약속위반 0) [car/ai]",
+        "pass": true,
+        "detail": "위반=[]"
+      },
+      {
+        "name": "E(약속위반 0) [car/priority]",
+        "pass": true,
+        "detail": "위반=[]"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 17,
+        "total_distance_km": 6.4
+      },
+      "walk": {
+        "total_duration_min": 50,
+        "total_distance_km": 3.8
+      },
+      "transit": {
+        "total_duration_min": 25,
+        "total_distance_km": 4.4
+      }
+    }
+  },
+  {
+    "id": 7,
+    "start": "인천국제공항",
+    "schedule": "송도 센트럴파크 구경하고 오후 1시 차이나타운에서 점심",
+    "start_time_raw": "11:30",
+    "start_time_effective": "11:30",
+    "places": [
+      {
+        "name": "송도 센트럴파크",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "차이나타운",
+        "priority": 3,
+        "appointment_time": "13:00"
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 69,
+        "total_distance_km": 32.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:20",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 48.7,
+            "km": 20.29
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 20.2,
+            "km": 11.69
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 69,
+        "total_distance_km": 32.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:20",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 48.7,
+            "km": 20.29
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 20.2,
+            "km": 11.69
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 69,
+        "total_distance_km": 32.0,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:20",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 48.7,
+            "km": 20.29
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 20.2,
+            "km": 11.69
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 390,
+        "total_distance_km": 29.3,
+        "estimated": true,
+        "appointment_violations": [
+          "차이나타운"
+        ],
+        "finish_time": "18:00",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 240.5,
+            "km": 18.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 149.7,
+            "km": 11.23
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 390,
+        "total_distance_km": 29.3,
+        "estimated": true,
+        "appointment_violations": [
+          "차이나타운"
+        ],
+        "finish_time": "18:00",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 240.5,
+            "km": 18.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 149.7,
+            "km": 11.23
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 390,
+        "total_distance_km": 29.3,
+        "estimated": true,
+        "appointment_violations": [
+          "차이나타운"
+        ],
+        "finish_time": "18:00",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 240.5,
+            "km": 18.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 149.7,
+            "km": 11.23
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 124,
+        "total_distance_km": 34.1,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:49",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 75.1,
+            "km": 21.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 48.7,
+            "km": 13.1
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 124,
+        "total_distance_km": 34.1,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:49",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 75.1,
+            "km": 21.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 48.7,
+            "km": 13.1
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "인천국제공항",
+          "차이나타운",
+          "송도 센트럴파크"
+        ],
+        "order_priorities": [
+          3,
+          3
+        ],
+        "total_duration_min": 124,
+        "total_distance_km": 34.1,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:49",
+        "start_time_used": "11:30",
+        "legs": [
+          {
+            "from": "인천국제공항",
+            "to": "차이나타운",
+            "min": 75.1,
+            "km": 21.04
+          },
+          {
+            "from": "차이나타운",
+            "to": "송도 센트럴파크",
+            "min": 48.7,
+            "km": 13.1
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=68.9분, total=69분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=68.9분, total=69분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=68.9분, total=69분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=390.2분, total=390분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=390.2분, total=390분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=390.2분, total=390분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=123.8분, total=124분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=123.8분, total=124분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=123.8분, total=124분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=69, ai=69, priority=69"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=390, ai=390, priority=390"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=124, ai=124, priority=124"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=80분, walk=433분, transit=136분"
+      },
+      {
+        "name": "E(약속위반 0) [car/ai]",
+        "pass": true,
+        "detail": "위반=[]"
+      },
+      {
+        "name": "E(약속위반 0) [car/priority]",
+        "pass": true,
+        "detail": "위반=[]"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 80,
+        "total_distance_km": 36.1
+      },
+      "walk": {
+        "total_duration_min": 433,
+        "total_distance_km": 32.5
+      },
+      "transit": {
+        "total_duration_min": 136,
+        "total_distance_km": 37.9
+      }
+    }
+  },
+  {
+    "id": 8,
+    "start": "대전역",
+    "schedule": "성심당 들러 빵 사고 한밭수목원 산책",
+    "start_time_raw": "BLANK",
+    "start_time_effective": "04:24",
+    "places": [
+      {
+        "name": "성심당",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "한밭수목원",
+        "priority": 4,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 22,
+        "total_distance_km": 9.9,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "04:46",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 7.2,
+            "km": 2.16
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 14.5,
+            "km": 7.78
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 22,
+        "total_distance_km": 9.9,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "04:46",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 7.2,
+            "km": 2.16
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 14.5,
+            "km": 7.78
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 22,
+        "total_distance_km": 9.9,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "04:46",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 7.2,
+            "km": 2.16
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 14.5,
+            "km": 7.78
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 107,
+        "total_distance_km": 8.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "06:11",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 13.3,
+            "km": 1.0
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 93.8,
+            "km": 7.03
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 107,
+        "total_distance_km": 8.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "06:11",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 13.3,
+            "km": 1.0
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 93.8,
+            "km": 7.03
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 107,
+        "total_distance_km": 8.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "06:11",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 13.3,
+            "km": 1.0
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 93.8,
+            "km": 7.03
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 41,
+        "total_distance_km": 9.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:05",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 8.9,
+            "km": 1.17
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 32.4,
+            "km": 8.21
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 41,
+        "total_distance_km": 9.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:05",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 8.9,
+            "km": 1.17
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 32.4,
+            "km": 8.21
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "대전역",
+          "성심당",
+          "한밭수목원"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 41,
+        "total_distance_km": 9.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "05:05",
+        "start_time_used": "04:24",
+        "legs": [
+          {
+            "from": "대전역",
+            "to": "성심당",
+            "min": 8.9,
+            "km": 1.17
+          },
+          {
+            "from": "성심당",
+            "to": "한밭수목원",
+            "min": 32.4,
+            "km": 8.21
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=21.7분, total=22분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=21.7분, total=22분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=21.7분, total=22분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=107.1분, total=107분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=107.1분, total=107분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=107.1분, total=107분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=41.3분, total=41분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=41.3분, total=41분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=41.3분, total=41분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=22, ai=22, priority=22"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=107, ai=107, priority=107"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=41, ai=41, priority=41"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=22분, walk=107분, transit=41분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 22,
+        "total_distance_km": 9.9
+      },
+      "walk": {
+        "total_duration_min": 107,
+        "total_distance_km": 8.0
+      },
+      "transit": {
+        "total_duration_min": 41,
+        "total_distance_km": 9.4
+      }
+    }
+  },
+  {
+    "id": 9,
+    "start": "서울역",
+    "schedule": "명동 쇼핑하고 남대문시장 구경, 서울로7017 산책, 덕수궁 관람",
+    "start_time_raw": "13:00",
+    "start_time_effective": "13:00",
+    "places": [
+      {
+        "name": "명동",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "남대문시장",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "서울로7017",
+        "priority": 4,
+        "appointment_time": null
+      },
+      {
+        "name": "덕수궁",
+        "priority": 3,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "서울역",
+          "명동",
+          "남대문시장",
+          "서울로7017",
+          "덕수궁"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          4,
+          3
+        ],
+        "total_duration_min": 19,
+        "total_distance_km": 6.5,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:19",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "명동",
+            "min": 7.7,
+            "km": 2.73
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 2.8,
+            "km": 0.88
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 1.4,
+            "km": 0.39
+          },
+          {
+            "from": "서울로7017",
+            "to": "덕수궁",
+            "min": 6.7,
+            "km": 2.5
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "서울역",
+          "명동",
+          "남대문시장",
+          "서울로7017",
+          "덕수궁"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          4,
+          3
+        ],
+        "total_duration_min": 19,
+        "total_distance_km": 6.5,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:19",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "명동",
+            "min": 7.7,
+            "km": 2.73
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 2.8,
+            "km": 0.88
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 1.4,
+            "km": 0.39
+          },
+          {
+            "from": "서울로7017",
+            "to": "덕수궁",
+            "min": 6.7,
+            "km": 2.5
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "서울역",
+          "덕수궁",
+          "명동",
+          "남대문시장",
+          "서울로7017"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          3,
+          4
+        ],
+        "total_duration_min": 21,
+        "total_distance_km": 7.3,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": "13:21",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "덕수궁",
+            "min": 8.4,
+            "km": 3.44
+          },
+          {
+            "from": "덕수궁",
+            "to": "명동",
+            "min": 8.9,
+            "km": 2.56
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 2.8,
+            "km": 0.88
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 1.4,
+            "km": 0.39
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "서울역",
+          "서울로7017",
+          "남대문시장",
+          "명동",
+          "덕수궁"
+        ],
+        "order_priorities": [
+          4,
+          3,
+          3,
+          3
+        ],
+        "total_duration_min": 40,
+        "total_distance_km": 3.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:40",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "서울로7017",
+            "min": 8.6,
+            "km": 0.64
+          },
+          {
+            "from": "서울로7017",
+            "to": "남대문시장",
+            "min": 4.8,
+            "km": 0.36
+          },
+          {
+            "from": "남대문시장",
+            "to": "명동",
+            "min": 11.5,
+            "km": 0.86
+          },
+          {
+            "from": "명동",
+            "to": "덕수궁",
+            "min": 15.4,
+            "km": 1.16
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "서울역",
+          "서울로7017",
+          "남대문시장",
+          "명동",
+          "덕수궁"
+        ],
+        "order_priorities": [
+          4,
+          3,
+          3,
+          3
+        ],
+        "total_duration_min": 40,
+        "total_distance_km": 3.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:40",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "서울로7017",
+            "min": 8.6,
+            "km": 0.64
+          },
+          {
+            "from": "서울로7017",
+            "to": "남대문시장",
+            "min": 4.8,
+            "km": 0.36
+          },
+          {
+            "from": "남대문시장",
+            "to": "명동",
+            "min": 11.5,
+            "km": 0.86
+          },
+          {
+            "from": "명동",
+            "to": "덕수궁",
+            "min": 15.4,
+            "km": 1.16
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "서울역",
+          "덕수궁",
+          "명동",
+          "남대문시장",
+          "서울로7017"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          3,
+          4
+        ],
+        "total_duration_min": 53,
+        "total_distance_km": 4.0,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:53",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "덕수궁",
+            "min": 21.3,
+            "km": 1.6
+          },
+          {
+            "from": "덕수궁",
+            "to": "명동",
+            "min": 15.4,
+            "km": 1.16
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 11.5,
+            "km": 0.86
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 4.8,
+            "km": 0.36
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "서울역",
+          "덕수궁",
+          "명동",
+          "남대문시장",
+          "서울로7017"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          3,
+          4
+        ],
+        "total_duration_min": 35,
+        "total_distance_km": 4.6,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:35",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "덕수궁",
+            "min": 11.2,
+            "km": 1.86
+          },
+          {
+            "from": "덕수궁",
+            "to": "명동",
+            "min": 9.5,
+            "km": 1.35
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 8.3,
+            "km": 1.0
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 6.4,
+            "km": 0.42
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "서울역",
+          "서울로7017",
+          "남대문시장",
+          "명동",
+          "덕수궁"
+        ],
+        "order_priorities": [
+          4,
+          3,
+          3,
+          3
+        ],
+        "total_duration_min": 32,
+        "total_distance_km": 3.5,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:32",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "서울로7017",
+            "min": 7.5,
+            "km": 0.75
+          },
+          {
+            "from": "서울로7017",
+            "to": "남대문시장",
+            "min": 6.4,
+            "km": 0.42
+          },
+          {
+            "from": "남대문시장",
+            "to": "명동",
+            "min": 8.3,
+            "km": 1.0
+          },
+          {
+            "from": "명동",
+            "to": "덕수궁",
+            "min": 9.5,
+            "km": 1.35
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "서울역",
+          "덕수궁",
+          "명동",
+          "남대문시장",
+          "서울로7017"
+        ],
+        "order_priorities": [
+          3,
+          3,
+          3,
+          4
+        ],
+        "total_duration_min": 35,
+        "total_distance_km": 4.6,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": "13:35",
+        "start_time_used": "13:00",
+        "legs": [
+          {
+            "from": "서울역",
+            "to": "덕수궁",
+            "min": 11.2,
+            "km": 1.86
+          },
+          {
+            "from": "덕수궁",
+            "to": "명동",
+            "min": 9.5,
+            "km": 1.35
+          },
+          {
+            "from": "명동",
+            "to": "남대문시장",
+            "min": 8.3,
+            "km": 1.0
+          },
+          {
+            "from": "남대문시장",
+            "to": "서울로7017",
+            "min": 6.4,
+            "km": 0.42
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=18.6분, total=19분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=18.6분, total=19분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=21.5분, total=21분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=40.3분, total=40분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=40.3분, total=40분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=53.0분, total=53분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=35.4분, total=35분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=31.7분, total=32분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=35.4분, total=35분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=19, ai=19, priority=21"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=40, ai=40, priority=53"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=32, ai=35, priority=35"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3, 3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3, 3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[3, 3, 3, 4]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=19분, walk=56분, transit=36분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 19,
+        "total_distance_km": 6.5
+      },
+      "walk": {
+        "total_duration_min": 56,
+        "total_distance_km": 4.2
+      },
+      "transit": {
+        "total_duration_min": 36,
+        "total_distance_km": 4.9
+      }
+    }
+  },
+  {
+    "id": 10,
+    "start": "청량리역",
+    "schedule": "경동시장에서 장보고 서울약령시 구경",
+    "start_time_raw": null,
+    "start_time_effective": null,
+    "places": [
+      {
+        "name": "경동시장",
+        "priority": 3,
+        "appointment_time": null
+      },
+      {
+        "name": "서울약령시",
+        "priority": 4,
+        "appointment_time": null
+      }
+    ],
+    "is_mock": false,
+    "runs": {
+      "car/ai": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 13,
+        "total_distance_km": 3.3,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.1,
+            "km": 2.2
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 4.5,
+            "km": 1.08
+          }
+        ]
+      },
+      "car/shortest": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 13,
+        "total_distance_km": 3.3,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.1,
+            "km": 2.2
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 4.5,
+            "km": 1.08
+          }
+        ]
+      },
+      "car/priority": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 13,
+        "total_distance_km": 3.3,
+        "estimated": false,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.1,
+            "km": 2.2
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 4.5,
+            "km": 1.08
+          }
+        ]
+      },
+      "walk/ai": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 11.8,
+            "km": 0.89
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 3.6,
+            "km": 0.27
+          }
+        ]
+      },
+      "walk/shortest": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 11.8,
+            "km": 0.89
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 3.6,
+            "km": 0.27
+          }
+        ]
+      },
+      "walk/priority": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.2,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 11.8,
+            "km": 0.89
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 3.6,
+            "km": 0.27
+          }
+        ]
+      },
+      "transit/ai": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.4,
+            "km": 1.03
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 6.1,
+            "km": 0.32
+          }
+        ]
+      },
+      "transit/shortest": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.4,
+            "km": 1.03
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 6.1,
+            "km": 0.32
+          }
+        ]
+      },
+      "transit/priority": {
+        "order": [
+          "청량리역",
+          "경동시장",
+          "서울약령시"
+        ],
+        "order_priorities": [
+          3,
+          4
+        ],
+        "total_duration_min": 15,
+        "total_distance_km": 1.4,
+        "estimated": true,
+        "appointment_violations": [],
+        "finish_time": null,
+        "start_time_used": null,
+        "legs": [
+          {
+            "from": "청량리역",
+            "to": "경동시장",
+            "min": 8.4,
+            "km": 1.03
+          },
+          {
+            "from": "경동시장",
+            "to": "서울약령시",
+            "min": 6.1,
+            "km": 0.32
+          }
+        ]
+      }
+    },
+    "checks": [
+      {
+        "name": "C(legs>0 & 합정합) [car/ai]",
+        "pass": true,
+        "detail": "leg합=12.6분, total=13분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/shortest]",
+        "pass": true,
+        "detail": "leg합=12.6분, total=13분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [car/priority]",
+        "pass": true,
+        "detail": "leg합=12.6분, total=13분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/ai]",
+        "pass": true,
+        "detail": "leg합=15.4분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/shortest]",
+        "pass": true,
+        "detail": "leg합=15.4분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [walk/priority]",
+        "pass": true,
+        "detail": "leg합=15.4분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/ai]",
+        "pass": true,
+        "detail": "leg합=14.5분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/shortest]",
+        "pass": true,
+        "detail": "leg합=14.5분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "C(legs>0 & 합정합) [transit/priority]",
+        "pass": true,
+        "detail": "leg합=14.5분, total=15분, 음수leg=False"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [car]",
+        "pass": true,
+        "detail": "shortest=13, ai=13, priority=13"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [walk]",
+        "pass": true,
+        "detail": "shortest=15, ai=15, priority=15"
+      },
+      {
+        "name": "A(shortest<=ai,priority) [transit]",
+        "pass": true,
+        "detail": "shortest=15, ai=15, priority=15"
+      },
+      {
+        "name": "B(priority 순서 비감소) [car]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [walk]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "B(priority 순서 비감소) [transit]",
+        "pass": true,
+        "detail": "우선순위열=[3, 4]"
+      },
+      {
+        "name": "D(도보>=자동차 시간, 고정순서)",
+        "pass": true,
+        "detail": "car=13분, walk=15분, transit=15분"
+      }
+    ],
+    "fixed_order_eta": {
+      "car": {
+        "total_duration_min": 13,
+        "total_distance_km": 3.3
+      },
+      "walk": {
+        "total_duration_min": 15,
+        "total_distance_km": 1.2
+      },
+      "transit": {
+        "total_duration_min": 15,
+        "total_distance_km": 1.4
+      }
+    }
+  }
+]

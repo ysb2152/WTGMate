@@ -258,7 +258,9 @@ TASK_INSTRUCTION = """아래 일정 문장에서 방문해야 할 장소를 모�
 - lat: 숫자
 - lng: 숫자
 - address: 알고 있다면 주소, 모르면 빈 문자열
+- appointment_time: 그 장소에 도착해야 하는 약속/예약 시각. 문장에 명시적 시각이 있으면 "HH:MM"(24시간제) 문자열로, 없으면 null
 
+시각은 오전/오후를 반영해 24시간제로 변환한다 (예: "오후 3시" -> "15:00", "밤 9시" -> "21:00"). 명시적 시각이 없으면 appointment_time은 null이다.
 장소명이 애매하면 가장 유력한 장소명을 사용한다.
 응답에는 JSON 배열만 포함한다."""
 
@@ -358,6 +360,9 @@ async def parse_tasks(req: ParseRequest):
 
         normalized = []
         for item in parsed:
+            # 모델이 뽑은 약속 시각은 "HH:MM"로 정규화하고, 형식이 어긋나면 버린다(None).
+            appt_raw = item.get("appointment_time")
+            appt = format_hhmm(parse_hhmm(appt_raw)) if appt_raw else None
             normalized.append(
                 {
                     "name": str(item.get("name", "장소")),
@@ -366,6 +371,7 @@ async def parse_tasks(req: ParseRequest):
                     "lat": float(item.get("lat", 0)),
                     "lng": float(item.get("lng", 0)),
                     "address": str(item.get("address", "")),
+                    "appointment_time": appt,
                 }
             )
 
