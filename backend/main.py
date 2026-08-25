@@ -116,7 +116,9 @@ class RouteDetailRequest(BaseModel):
 
 def clamp_priority(value: Optional[int]) -> int:
     try:
-        value = int(value or 3)
+        # `value or 3`는 value=0일 때도 falsy로 취급되어 3으로 바뀌어버리므로
+        # None인 경우에만 기본값 3을 쓰도록 명시적으로 검사한다.
+        value = int(value) if value is not None else 3
     except (TypeError, ValueError):
         value = 3
     return max(1, min(5, value))
