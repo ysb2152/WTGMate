@@ -58,6 +58,14 @@ MAX_BRUTE_FORCE_STOPS = 9
 # 여유를 둔 100을 기본값으로 쓴다(우선순위 지배력 약 1.8배).
 AI_PRIORITY_WEIGHT_SEC = 100
 
+# 약속 시각(appointment_time)을 어긴 순서에 부여하는 페널티(초).
+# 어떤 이동시간/우선순위 비용보다도 압도적으로 크게 잡아, "약속을 지키는 순서"가
+# 항상 그렇지 않은 순서보다 먼저 선택되도록 만든다(사실상 하드 제약).
+APPOINTMENT_VIOLATION_PENALTY_SEC = 10_000_000
+
+# 약속 시각 대비 허용하는 지각(분). 0이면 약속 시각까지 정확히 도착해야 한다.
+APPOINTMENT_TOLERANCE_MIN = 0
+
 
 # =========================================================
 # Models
@@ -74,6 +82,11 @@ class LocationItem(BaseModel):
     lat: float
     lng: float
     address: Optional[str] = ""
+    # appointment_time: "HH:MM" 고정 약속 시각(= 도착 마감). LLM이 산문에서 추출한다.
+    #   값이 있으면 그 시각까지 반드시 도착해야 하는 하드 제약으로 취급한다.
+    appointment_time: Optional[str] = None
+    # duration_min: 그 장소에서 머무는(체류) 시간(분). 사용자가 입력한다.
+    duration_min: Optional[int] = 0
 
 
 class OptimizeRequest(BaseModel):
@@ -84,11 +97,17 @@ class OptimizeRequest(BaseModel):
     # priority : 우선순위 그룹 순서를 절대 기준으로 강제, 그룹 내에서만 이동시간 최소화
     # ai       : 이동시간 + (우선순위 x 방문순서) 페널티를 종합한 점수 최소화
     optimize_mode: str = "ai"
+    # start_time: "HH:MM" 예상 출발 시각(사용자 입력). 지금일 수도, 내일일 수도 있으므로
+    #   "현재 시각"이 아니라 사용자가 정한 출발 예정 시각으로 다룬다.
+    #   있으면 약속 시각 제약과 도착 시각 계산에 사용한다.
+    start_time: Optional[str] = None
 
 
 class RouteDetailRequest(BaseModel):
     ordered_locations: List[LocationItem]
     travel_mode: str = "car"
+    # start_time: "HH:MM" 예상 출발 시각. 있으면 각 장소의 도착/출발 시각을 계산해 반환한다.
+    start_time: Optional[str] = None
 
 
 # =========================================================
@@ -116,6 +135,99 @@ def validate_locations(locations: List[LocationItem]):
                 status_code=400,
                 detail=f"{index}번째 장소 [{loc.name}]의 좌표가 올바르지 않습니다.",
             )
+
+
+def parse_hhmm(value: Optional[str]) -> Optional[int]:
+    """'HH:MM' 문자열을 자정 기준 분(minute)으로 변환. 형식이 잘못되면 None."""
+    if not value:
+        return None
+    try:
+        parts = str(value).strip().split(":")
+        if len(parts) != 2:
+            return None
+        total = int(parts[0]) * 60 + int(parts[1])
+    except (TypeError, ValueError):
+        return None
+    if 0 <= total < 24 * 60:
+        return total
+    return None
+
+
+def format_hhmm(minutes: Optional[float]) -> Optional[str]:
+    """분(minute)을 'HH:MM'로 변환. 자정을 넘어가면 24시간으로 나눈 나머지로 표기(같은 날 가정)."""
+    if minutes is None:
+        return None
+    m = int(round(minutes)) % (24 * 60)
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+def build_schedule(
+    full_order: List[int],
+    all_locations: List[LocationItem],
+    time_matrix: List[List[int]],
+    start_min: Optional[int],
+):
+    """방문 순서(출발지 0을 맨 앞에 포함)를 따라 시간축을 계산한다.
+
+    각 정거장에서: 도착 = 직전 출발 + 이동시간. 약속 시각이 있으면
+    - 일찍 도착하면 약속 시각까지 대기(그때부터 체류 시작),
+    - 약속 시각(+허용 지각)을 넘겨 도착하면 위반으로 기록.
+    이후 체류시간(duration_min)만큼 머문 뒤 다음 장소로 출발한다.
+
+    반환: (schedule, violations, finish_min)
+      schedule: [{node, arrival_min, depart_min, appointment_min, late}]
+      violations: 약속을 어긴 node 인덱스 목록
+      finish_min: 마지막 장소에서의 최종 출발(=일정 종료) 시각
+    """
+    schedule = []
+    violations = []
+    t: Optional[float] = start_min
+
+    for pos, node in enumerate(full_order):
+        appt = parse_hhmm(getattr(all_locations[node], "appointment_time", None))
+        late = False
+
+        if pos == 0:
+            arrival = t  # 출발지: 도착=출발 시각
+        else:
+            prev = full_order[pos - 1]
+            if t is not None:
+                t += time_matrix[prev][node] / 60.0
+            arrival = t
+            if t is not None and appt is not None:
+                if arrival > appt + APPOINTMENT_TOLERANCE_MIN:
+                    late = True
+                    violations.append(node)
+                elif arrival < appt:
+                    t = appt  # 일찍 도착 -> 약속 시각까지 대기
+
+        dwell = int(getattr(all_locations[node], "duration_min", 0) or 0)
+        if t is not None:
+            t += dwell
+
+        schedule.append({
+            "node": node,
+            "arrival_min": arrival,
+            "depart_min": t,
+            "appointment_min": appt,
+            "late": late,
+        })
+
+    return schedule, violations, t
+
+
+def appointment_penalty_sec(
+    stop_order: List[int],
+    all_locations: List[LocationItem],
+    time_matrix: List[List[int]],
+    start_min: Optional[int],
+) -> int:
+    """주어진 목적지 방문 순서(출발지 제외)가 약속 시각을 어긴 개수에 비례한 페널티(초).
+    start_min이 없으면(출발 시각 미입력) 시간 제약을 적용하지 않는다."""
+    if start_min is None:
+        return 0
+    _, violations, _ = build_schedule([0] + list(stop_order), all_locations, time_matrix, start_min)
+    return len(violations) * APPOINTMENT_VIOLATION_PENALTY_SEC
 
 
 def haversine_distance_m(a: LocationItem, b: LocationItem) -> float:
@@ -375,12 +487,21 @@ def path_travel_time(order: List[int], time_matrix: List[List[int]]) -> int:
     return total
 
 
-def solve_shortest(stop_indices: List[int], time_matrix: List[List[int]]) -> List[int]:
-    """순수 이동시간 최소화. 우선순위는 완전히 무시한다."""
+def solve_shortest(
+    stop_indices: List[int],
+    time_matrix: List[List[int]],
+    all_locations: Optional[List[LocationItem]] = None,
+    start_min: Optional[int] = None,
+) -> List[int]:
+    """순수 이동시간 최소화. 우선순위는 완전히 무시한다.
+    단, 출발 시각이 주어지면 약속 시각을 어기는 순서에는 큰 페널티를 얹어
+    '약속을 지키는 순서'가 먼저 선택되도록 한다."""
     if len(stop_indices) <= MAX_BRUTE_FORCE_STOPS:
         best_order, best_cost = None, None
         for perm in itertools.permutations(stop_indices):
             cost = path_travel_time(list(perm), time_matrix)
+            if all_locations is not None:
+                cost += appointment_penalty_sec(list(perm), all_locations, time_matrix, start_min)
             if best_cost is None or cost < best_cost:
                 best_cost, best_order = cost, list(perm)
         return best_order
@@ -429,12 +550,20 @@ def solve_priority(stop_indices: List[int], time_matrix: List[List[int]], locati
     return dp[best_end][1]
 
 
-def solve_ai(stop_indices: List[int], time_matrix: List[List[int]], locations: List[LocationItem]) -> List[int]:
+def solve_ai(
+    stop_indices: List[int],
+    time_matrix: List[List[int]],
+    locations: List[LocationItem],
+    start_min: Optional[int] = None,
+) -> List[int]:
     """
     이동시간 + (중요도 x 방문 순서 위치) 페널티를 합산한 점수를 최소화.
     중요한 장소(priority 숫자가 작음)일수록 "늦게 방문할 때" 페널티가 커지도록
     importance_score(= 6 - priority)를 가중치로 곱한다.
     순서 자체가 점수에 실질적으로 반영된다 (기존 버그였던 "순서 무관 총합 동일" 문제 해결).
+
+    출발 시각이 주어지면 약속 시각 위반 페널티를 더해, 약속을 지키는 순서를
+    (우선순위/이동시간보다 우선해서) 먼저 선택하도록 한다.
     """
     if len(stop_indices) <= MAX_BRUTE_FORCE_STOPS:
         best_order, best_score = None, None
@@ -444,7 +573,7 @@ def solve_ai(stop_indices: List[int], time_matrix: List[List[int]], locations: L
                 importance_score(locations[node].priority) * position * AI_PRIORITY_WEIGHT_SEC
                 for position, node in enumerate(perm)
             )
-            score = travel + penalty
+            score = travel + penalty + appointment_penalty_sec(list(perm), locations, time_matrix, start_min)
             if best_score is None or score < best_score:
                 best_score, best_order = score, list(perm)
         return best_order
@@ -519,16 +648,22 @@ async def optimize_route(req: OptimizeRequest):
 
     time_matrix, distance_matrix, estimated = await build_time_distance_matrix(all_locations, req.travel_mode)
 
+    start_min = parse_hhmm(req.start_time)
     stop_indices = list(range(1, len(all_locations)))  # 0은 출발지, 나머지가 목적지
 
     if req.optimize_mode == "shortest":
-        order = solve_shortest(stop_indices, time_matrix)
+        order = solve_shortest(stop_indices, time_matrix, all_locations, start_min)
     elif req.optimize_mode == "priority":
         order = solve_priority(stop_indices, time_matrix, all_locations)
     else:  # "ai"
-        order = solve_ai(stop_indices, time_matrix, all_locations)
+        order = solve_ai(stop_indices, time_matrix, all_locations, start_min)
 
     optimized_locations = [all_locations[0]] + [all_locations[i] for i in order]
+
+    # 확정된 순서에 대해 시간축을 계산해, 약속 위반 여부를 함께 알려준다.
+    # (여기 time_matrix는 추정치일 수 있으므로 정확한 도착 시각은 /api/route-eta가 계산한다)
+    _, violations, _ = build_schedule([0] + order, all_locations, time_matrix, start_min)
+    violated_names = [all_locations[i].name for i in violations]
 
     return {
         "status": "success",
@@ -536,6 +671,7 @@ async def optimize_route(req: OptimizeRequest):
         "optimize_mode": req.optimize_mode,
         "travel_mode": req.travel_mode,
         "estimated": estimated,
+        "appointment_violations": violated_names,
     }
 
 
@@ -557,6 +693,24 @@ async def calculate_route_eta(req: RouteDetailRequest):
     legs = []
     estimated = req.travel_mode != "car" or not KAKAO_REST_API_KEY
 
+    # 출발 시각이 있으면 실제 이동시간을 누적해 각 장소의 도착/출발 시각을 계산한다.
+    start_min = parse_hhmm(req.start_time)
+    t: Optional[float] = start_min
+    stops = []
+    violations = []
+
+    # 출발지(첫 장소): 도착=출발 예정 시각. 체류시간이 있으면 반영.
+    start_dwell = int(getattr(locs[0], "duration_min", 0) or 0)
+    stops.append({
+        "name": locs[0].name,
+        "arrival_time": format_hhmm(t),
+        "depart_time": format_hhmm(t + start_dwell if t is not None else None),
+        "appointment_time": None,
+        "late": False,
+    })
+    if t is not None:
+        t += start_dwell
+
     async with httpx.AsyncClient() as client:
         for i in range(len(locs) - 1):
             origin, dest = locs[i], locs[i + 1]
@@ -570,13 +724,46 @@ async def calculate_route_eta(req: RouteDetailRequest):
                 "distance_km": round(distance / 1000, 2),
             })
 
-    return {
+            arrival = None
+            late = False
+            appt = parse_hhmm(getattr(dest, "appointment_time", None))
+            if t is not None:
+                t += duration / 60.0
+                arrival = t
+                if appt is not None:
+                    if arrival > appt + APPOINTMENT_TOLERANCE_MIN:
+                        late = True
+                        violations.append(dest.name)
+                    elif arrival < appt:
+                        t = appt  # 일찍 도착 -> 약속 시각까지 대기
+                dwell = int(getattr(dest, "duration_min", 0) or 0)
+                t += dwell
+
+            stops.append({
+                "name": dest.name,
+                "arrival_time": format_hhmm(arrival),
+                "depart_time": format_hhmm(t),
+                "appointment_time": getattr(dest, "appointment_time", None),
+                "late": late,
+            })
+
+    result = {
         "status": "success",
         "total_duration_min": round(total_duration / 60),
         "total_distance_km": round(total_distance / 1000, 1),
         "legs": legs,
         "estimated": estimated,
     }
+
+    # 출발 시각이 주어진 경우에만 시간축 정보를 덧붙인다.
+    if start_min is not None:
+        result["start_time"] = format_hhmm(start_min)
+        result["finish_time"] = format_hhmm(t)
+        result["total_elapsed_min"] = round(t - start_min) if t is not None else None
+        result["stops"] = stops
+        result["appointment_violations"] = violations
+
+    return result
 
 
 @app.get("/api/health")

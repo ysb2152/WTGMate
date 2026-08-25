@@ -16,6 +16,8 @@ const toLocation = (place, task = '방문', priority = 3) => ({
   lat: Number(place.y),
   lng: Number(place.x),
   address: place.road_address_name || place.address_name || '',
+  duration_min: 0,
+  appointment_time: null,
 });
 
 function LandingOverlay({ onStart }) {
@@ -177,6 +179,14 @@ function App() {
   const [travelMode, setTravelMode] = useState('car');
   const [activeRoute, setActiveRoute] = useState('ai');
   const [started, setStarted] = useState(false);
+
+  // 예상 출발 시각("HH:MM", 24시간제). 비워두면 시간 제약/도착시각 계산을 하지 않는다.
+  const [startTime, setStartTime] = useState('');
+  // 출발 시각을 오전/오후 · 시(1~12) · 분(0~59) 세 드롭다운으로 입력받는다.
+  // 셋 중 하나라도 미선택('')이면 startTime을 비워 시간 제약을 끈다.
+  const [startMeridiem, setStartMeridiem] = useState(''); // '오전' | '오후'
+  const [startHour, setStartHour] = useState('');         // '1'~'12'
+  const [startMinute, setStartMinute] = useState('');     // '0'~'59'
 
   // 세 결과는 서로 덮어쓰지 않는다.
   const [routeResults, setRouteResults] = useState({
@@ -410,7 +420,13 @@ function App() {
         throw new Error(data.message || '장소 분석 실패');
       }
 
-      const parsedList = Array.isArray(data.data) ? data.data : [];
+      const parsedList = (Array.isArray(data.data) ? data.data : []).map((item) => ({
+        ...item,
+        // 체류 시간(분): 사용자가 확인 단계에서 조정. 기본 30분.
+        duration_min: Number(item.duration_min) > 0 ? Number(item.duration_min) : 30,
+        // 약속 시각: LLM이 추출했으면 그 값, 없으면 사용자가 확인 단계에서 입력.
+        appointment_time: item.appointment_time || null,
+      }));
 
       if (!parsedList.length) {
         alert('방문할 장소를 찾지 못했습니다.');
@@ -494,6 +510,11 @@ function App() {
           old.task || '방문',
           Number(old.priority) || 3
         ),
+        // 후보 교체는 좌표/주소만 바꾸는 것이므로, 사용자가 입력한
+        // 체류 시간과 약속 시각은 그대로 유지한다. (toLocation이 이 둘을
+        // 기본값 0/null로 덮어쓰기 때문에 여기서 old 값으로 되살린다)
+        duration_min: old.duration_min ?? 0,
+        appointment_time: old.appointment_time ?? null,
       };
 
       return updated;
@@ -522,6 +543,7 @@ function App() {
         body: JSON.stringify({
           ordered_locations: orderedList,
           travel_mode: mode,
+          start_time: startTime || null,
         }),
       });
 
@@ -540,6 +562,14 @@ function App() {
         legs: Array.isArray(data.legs) ? data.legs : [],
         estimated: Boolean(data.estimated),
         travelMode: mode,
+        // 출발 시각을 입력했을 때만 채워지는 시간축 정보.
+        startTimeUsed: data.start_time || null,
+        finishTime: data.finish_time || null,
+        totalElapsedMin: data.total_elapsed_min ?? null,
+        stops: Array.isArray(data.stops) ? data.stops : null,
+        appointmentViolations: Array.isArray(data.appointment_violations)
+          ? data.appointment_violations
+          : [],
       };
     } catch (err) {
       console.error('ETA 계산 실패:', err);
@@ -585,6 +615,7 @@ function App() {
         })),
         travel_mode: travelMode,
         optimize_mode: mode,
+        start_time: startTime || null,
       };
 
       const res = await fetch(`${API_BASE_URL}/api/optimize-route`, {
@@ -707,6 +738,71 @@ function App() {
 
     setIsPriorityDirty(true);
     setActiveRoute('priority');
+  };
+
+  // 체류 시간(분)과 약속 시각은 모든 모드의 스케줄에 영향을 주므로,
+  // 값이 바뀌면 캐시된 세 경로 결과를 전부 무효화한다.
+  const invalidateAllRoutes = () => {
+    setRouteResults({ ai: null, shortest: null, priority: null });
+    setIsPriorityDirty(false);
+  };
+
+  // 오전/오후 · 시(1~12) · 분을 24시간제 "HH:MM"으로 합친다.
+  // 하나라도 미선택이면 '' (시간 제약 없음).
+  const composeStartTime = (meridiem, hour12, minute) => {
+    if (!meridiem || hour12 === '' || minute === '') return '';
+    let hour = Number(hour12) % 12;         // 12시 -> 0
+    if (meridiem === '오후') hour += 12;     // 오후 -> +12 (오후 12시는 정오 12시)
+    return `${String(hour).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
+  };
+
+  const updateStartTimePart = (part, value) => {
+    const next = {
+      meridiem: startMeridiem,
+      hour: startHour,
+      minute: startMinute,
+      [part]: value,
+    };
+    setStartMeridiem(next.meridiem);
+    setStartHour(next.hour);
+    setStartMinute(next.minute);
+    setStartTime(composeStartTime(next.meridiem, next.hour, next.minute));
+    invalidateAllRoutes();
+  };
+
+  const clearStartTime = () => {
+    setStartMeridiem('');
+    setStartHour('');
+    setStartMinute('');
+    setStartTime('');
+    invalidateAllRoutes();
+  };
+
+  const updateDuration = (index, value) => {
+    const duration = Math.max(0, Number(value) || 0);
+
+    setLocations((prev) => {
+      const updated = [...prev];
+      if (!updated[index]) return prev;
+      updated[index] = { ...updated[index], duration_min: duration };
+      return updated;
+    });
+
+    invalidateAllRoutes();
+  };
+
+  const updateAppointment = (index, value) => {
+    // 빈 값이면 약속 없음(null)으로 저장.
+    const appointment = value ? value : null;
+
+    setLocations((prev) => {
+      const updated = [...prev];
+      if (!updated[index]) return prev;
+      updated[index] = { ...updated[index], appointment_time: appointment };
+      return updated;
+    });
+
+    invalidateAllRoutes();
   };
 
   // -------------------------------
@@ -911,6 +1007,53 @@ function App() {
                 style={styles.textarea}
               />
 
+              <div style={styles.startTimeRow}>
+                <span style={styles.startTimeLabel}>🕒 출발 예정 시각</span>
+                <div style={styles.timeSelectGroup}>
+                  <select
+                    value={startMeridiem}
+                    onChange={(e) => updateStartTimePart('meridiem', e.target.value)}
+                    style={styles.timeSelect}
+                  >
+                    <option value="">오전/오후</option>
+                    <option value="오전">오전</option>
+                    <option value="오후">오후</option>
+                  </select>
+                  <select
+                    value={startHour}
+                    onChange={(e) => updateStartTimePart('hour', e.target.value)}
+                    style={styles.timeSelect}
+                  >
+                    <option value="">시</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                      <option key={h} value={h}>{h}시</option>
+                    ))}
+                  </select>
+                  <select
+                    value={startMinute}
+                    onChange={(e) => updateStartTimePart('minute', e.target.value)}
+                    style={styles.timeSelect}
+                  >
+                    <option value="">분</option>
+                    {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
+                    ))}
+                  </select>
+                </div>
+                {startTime && (
+                  <button
+                    type="button"
+                    onClick={clearStartTime}
+                    style={styles.timeClearButton}
+                  >
+                    지우기
+                  </button>
+                )}
+              </div>
+              <div style={styles.startTimeHint}>
+                입력하면 약속 시각을 지키도록 경로를 짜고 도착 시각까지 계산합니다. (선택)
+              </div>
+
               <button
                 type="button"
                 onClick={handleParseText}
@@ -947,6 +1090,33 @@ function App() {
                   {loc.address && (
                     <div style={styles.smallText}>📍 {loc.address}</div>
                   )}
+
+                  <div style={styles.timeFieldRow}>
+                    <label style={styles.timeField}>
+                      <span style={styles.timeFieldLabel}>체류 시간</span>
+                      <span style={styles.durationInputWrap}>
+                        <input
+                          type="number"
+                          min={0}
+                          step={5}
+                          value={loc.duration_min ?? 0}
+                          onChange={(e) => updateDuration(idx, e.target.value)}
+                          style={styles.durationInput}
+                        />
+                        <span style={styles.durationUnit}>분</span>
+                      </span>
+                    </label>
+
+                    <label style={styles.timeField}>
+                      <span style={styles.timeFieldLabel}>약속 시각 (선택)</span>
+                      <input
+                        type="time"
+                        value={loc.appointment_time || ''}
+                        onChange={(e) => updateAppointment(idx, e.target.value)}
+                        style={styles.appointmentInput}
+                      />
+                    </label>
+                  </div>
 
                   {placeSearchingMap[idx] ? (
                     <div style={styles.smallText}>장소 후보 검색 중...</div>
@@ -1083,6 +1253,23 @@ function App() {
                   </div>
                 </div>
 
+                {currentRoute.finishTime && (
+                  <div style={styles.scheduleSummary}>
+                    <span style={styles.scheduleSummaryText}>
+                      🕒 {currentRoute.startTimeUsed} 출발 → {currentRoute.finishTime} 종료
+                      {currentRoute.totalElapsedMin != null && (
+                        <> · 총 {formatDuration(currentRoute.totalElapsedMin)}(대기·체류 포함)</>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {currentRoute.appointmentViolations?.length > 0 && (
+                  <div style={styles.violationNotice}>
+                    ⚠ 약속 시각을 지킬 수 없는 장소: {currentRoute.appointmentViolations.join(', ')}
+                  </div>
+                )}
+
                 <div style={styles.resultDescription}>
                   {routeDescription(activeRoute)}
                 </div>
@@ -1128,7 +1315,39 @@ function App() {
                               {getPriorityText(loc.priority)}
                             </span>
                           )}
+                          {currentRoute.stops?.[idx] && (
+                            <span
+                              style={{
+                                ...styles.arrivalBadge,
+                                ...(currentRoute.stops[idx].late
+                                  ? styles.arrivalBadgeLate
+                                  : {}),
+                              }}
+                            >
+                              {idx === 0
+                                ? `${currentRoute.stops[idx].depart_time} 출발`
+                                : `${currentRoute.stops[idx].arrival_time} 도착`}
+                            </span>
+                          )}
                         </div>
+
+                        {currentRoute.stops?.[idx] && idx > 0 && (
+                          <div style={styles.scheduleLine}>
+                            {currentRoute.stops[idx].appointment_time && (
+                              <span
+                                style={
+                                  currentRoute.stops[idx].late
+                                    ? styles.apptTagLate
+                                    : styles.apptTag
+                                }
+                              >
+                                약속 {currentRoute.stops[idx].appointment_time}
+                                {currentRoute.stops[idx].late ? ' · 지각' : ''}
+                              </span>
+                            )}
+                            <span>출발 {currentRoute.stops[idx].depart_time}</span>
+                          </div>
+                        )}
 
                         {idx === 0 ? (
                           <span style={styles.taskText}>출발지</span>
@@ -1829,6 +2048,176 @@ const styles = {
     background: '#fff',
     color: '#4d5666',
     fontSize: 10,
+  },
+
+  // --- 출발 시각 입력 (03) ---
+  startTimeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  startTimeLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#4d5666',
+  },
+
+  timeSelectGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+  },
+
+  timeSelect: {
+    height: 34,
+    boxSizing: 'border-box',
+    padding: '0 8px',
+    border: '1px solid #d9dee8',
+    borderRadius: 8,
+    outline: 'none',
+    background: '#fff',
+    color: '#172033',
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+
+  timeClearButton: {
+    border: 'none',
+    background: 'transparent',
+    color: '#98a2b3',
+    fontSize: 11,
+    cursor: 'pointer',
+    padding: 2,
+  },
+
+  startTimeHint: {
+    fontSize: 10,
+    color: '#98a2b3',
+    marginTop: 6,
+    marginBottom: 10,
+    lineHeight: 1.45,
+  },
+
+  // --- 장소별 체류시간 / 약속시각 (장소 확인) ---
+  timeFieldRow: {
+    display: 'flex',
+    gap: 8,
+    marginTop: 9,
+  },
+
+  timeField: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+
+  timeFieldLabel: {
+    fontSize: 10,
+    color: '#8b94a3',
+  },
+
+  durationInputWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  durationInput: {
+    width: 60,
+    height: 30,
+    boxSizing: 'border-box',
+    padding: '0 8px',
+    border: '1px solid #d9dee8',
+    borderRadius: 7,
+    outline: 'none',
+    fontSize: 12,
+  },
+
+  durationUnit: {
+    fontSize: 11,
+    color: '#8b94a3',
+  },
+
+  appointmentInput: {
+    height: 30,
+    boxSizing: 'border-box',
+    padding: '0 8px',
+    border: '1px solid #d9dee8',
+    borderRadius: 7,
+    outline: 'none',
+    fontSize: 12,
+    color: '#172033',
+  },
+
+  // --- 요약 카드(다크) 안의 시간 정보 ---
+  scheduleSummary: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+
+  scheduleSummaryText: {
+    fontSize: 12,
+    color: '#cfd6e4',
+    lineHeight: 1.5,
+  },
+
+  violationNotice: {
+    marginTop: 10,
+    padding: '8px 10px',
+    borderRadius: 8,
+    background: 'rgba(217, 76, 50, 0.16)',
+    color: '#ffb4a2',
+    fontSize: 11,
+    lineHeight: 1.45,
+  },
+
+  // --- 방문 순서 타임라인의 도착시각 ---
+  arrivalBadge: {
+    marginLeft: 'auto',
+    padding: '3px 7px',
+    borderRadius: 20,
+    background: '#eef0f6',
+    color: '#5a647a',
+    fontSize: 10,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+  },
+
+  arrivalBadgeLate: {
+    background: '#fff0ed',
+    color: '#d94c32',
+  },
+
+  scheduleLine: {
+    marginTop: 5,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 10,
+    color: '#8b94a3',
+  },
+
+  apptTag: {
+    padding: '2px 6px',
+    borderRadius: 5,
+    background: '#eef1f8',
+    color: '#5b6cc0',
+    fontSize: 9,
+    fontWeight: 700,
+  },
+
+  apptTagLate: {
+    padding: '2px 6px',
+    borderRadius: 5,
+    background: '#fff0ed',
+    color: '#d94c32',
+    fontSize: 9,
+    fontWeight: 700,
   },
 
   mapArea: {
