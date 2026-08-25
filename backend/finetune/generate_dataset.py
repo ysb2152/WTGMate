@@ -43,11 +43,13 @@ TASK_INSTRUCTION = """아래 일정 문장에서 방문해야 할 장소를 모�
 - lat: 숫자
 - lng: 숫자
 - address: 알고 있다면 주소, 모르면 빈 문자열
+- appointment_time: 그 장소에 도착해야 하는 약속/예약 시각. 문장에 명시적 시각이 있으면 "HH:MM"(24시간제) 문자열로, 없으면 null
 
+시각은 오전/오후를 반영해 24시간제로 변환한다 (예: "오후 3시" -> "15:00", "밤 9시" -> "21:00"). 명시적 시각이 없으면 appointment_time은 null이다.
 장소명이 애매하면 가장 유력한 장소명을 사용한다.
 응답에는 JSON 배열만 포함한다."""
 
-REQUIRED_KEYS = {"name", "task", "priority", "lat", "lng", "address"}
+REQUIRED_KEYS = {"name", "task", "priority", "lat", "lng", "address", "appointment_time"}
 
 REGIONS = ["서울", "부산", "대구", "인천", "광주", "대전", "수원", "제주", "강릉", "전주", "울산", "창원"]
 
@@ -60,6 +62,9 @@ GEN_PROMPT_TEMPLATE = """너는 LLM 파인튜닝용 학습 데이터를 만드�
    - 문장 스타일(반말/존댓말/메모체/구어체)을 예시마다 다양하게 섞어라.
    - 장소는 "{region}" 지역 근처의 실제 지하철역, 랜드마크, 프랜차이즈, 관공서 등을 우선 사용하라.
    - 문장 안에 우선순위가 자연스럽게 암시되도록 하라 (예: "꼭", "중요한", "시간 되면", "여유있게", "급한 건 아니지만" 등).
+   - 예시의 약 절반 정도에는 특정 장소에 도착해야 하는 약속/예약 시각을 자연스럽게 넣어라
+     (예: "오후 3시 미팅", "2시까지 병원 예약", "14시 KTX", "저녁 7시 저녁약속"). 나머지 절반은 시각을 전혀 넣지 마라.
+   - 시각 표현은 오전/오후/저녁/밤, "N시", "N시 반", "HH:MM", "정오" 등 다양하게 섞어라.
 2. "output": 아래 지시문을 이 input에 대해 정확히 수행했을 때 나와야 하는 정답 JSON 배열.
 
 --- 지시문 ---
@@ -68,12 +73,30 @@ GEN_PROMPT_TEMPLATE = """너는 LLM 파인튜닝용 학습 데이터를 만드�
 
 주의사항:
 - output의 lat/lng는 실제 해당 장소의 위도/경도를 최대한 정확한 실제 값으로 채워라. 정확히 모르면 그 지역 중심부의 근사 좌표를 사용하라.
+- input에 특정 장소의 약속/예약 시각이 나오면 해당 항목의 appointment_time을 "HH:MM"(24시간제)로 채우고,
+  시각 언급이 없는 장소는 반드시 null로 둔다. "오후 3시"->"15:00", "저녁 7시"->"19:00", "정오"->"12:00"처럼 정확히 변환하라.
 - input에서 언급된 장소 개수와 output 배열의 길이는 반드시 일치해야 한다.
 - 같은 장소명을 여러 예시에서 반복해서 쓰지 말고 다양화하라.
 - 아래 JSON 스키마로만 응답하라. 코드블록이나 설명 등 다른 텍스트는 절대 포함하지 마라.
 
-{{"examples": [{{"input": "...", "output": [{{"name": "...", "task": "...", "priority": 1, "lat": 0.0, "lng": 0.0, "address": "..."}}]}}]}}
+{{"examples": [{{"input": "...", "output": [{{"name": "...", "task": "...", "priority": 1, "lat": 0.0, "lng": 0.0, "address": "...", "appointment_time": "15:00"}}, {{"name": "...", "task": "...", "priority": 3, "lat": 0.0, "lng": 0.0, "address": "...", "appointment_time": null}}]}}]}}
 """
+
+
+def valid_appointment_time(value) -> bool:
+    """appointment_time은 null(없음) 또는 정상 범위의 'HH:MM' 문자열만 허용한다."""
+    if value is None:
+        return True
+    if not isinstance(value, str):
+        return False
+    parts = value.strip().split(":")
+    if len(parts) != 2:
+        return False
+    try:
+        h, m = int(parts[0]), int(parts[1])
+    except (TypeError, ValueError):
+        return False
+    return 0 <= h < 24 and 0 <= m < 60
 
 
 def validate_example(ex: dict) -> bool:
@@ -94,6 +117,8 @@ def validate_example(ex: dict) -> bool:
             float(item["lng"])
             int(item["priority"])
         except (TypeError, ValueError):
+            return False
+        if not valid_appointment_time(item["appointment_time"]):
             return False
     return True
 
