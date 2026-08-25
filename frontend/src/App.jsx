@@ -548,7 +548,7 @@ function App() {
         body: JSON.stringify({
           ordered_locations: orderedList,
           travel_mode: mode,
-          start_time: startTime || null,
+          start_time: effectiveStartTime(),
         }),
       });
 
@@ -620,7 +620,7 @@ function App() {
         })),
         travel_mode: travelMode,
         optimize_mode: mode,
-        start_time: startTime || null,
+        start_time: effectiveStartTime(),
       };
 
       const res = await fetch(`${API_BASE_URL}/api/optimize-route`, {
@@ -760,6 +760,16 @@ function App() {
     if (meridiem === '오후') hour += 12;     // 오후 -> +12 (오후 12시는 정오 12시)
     return `${String(hour).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
   };
+
+  // 현재 PC 시각을 24시간제 "HH:MM"으로 반환.
+  const currentHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // 최적화/도착시각 계산에 쓸 출발 시각: 사용자가 고른 값이 있으면 그 값,
+  // 없으면 현재 PC 시각을 기준으로 삼는다(요청 시점 기준으로 도착 시각/약속 준수 계산).
+  const effectiveStartTime = () => startTime || currentHHMM();
 
   const updateStartTimePart = (part, value) => {
     const next = {
@@ -1058,6 +1068,8 @@ function App() {
               </div>
               <div style={styles.startTimeHint}>
                 입력하면 약속 시각을 지키도록 경로를 짜고 도착 시각까지 계산합니다. (선택)
+                <br />
+                예정 시각을 선택하지 않으면 현재 시간을 기준으로 반영합니다.
               </div>
 
               <button
