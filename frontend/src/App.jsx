@@ -660,22 +660,53 @@ function App() {
   };
 
   // 이동수단이 바뀌면 기존 ETA는 이동수단이 달라졌으므로 새로 계산한다.
-  // 단, 일정 자체는 바꾸지 않는다.
+  // 단, 일정 자체(방문 순서)는 바꾸지 않는다.
+  // 캐시되어 있던 세 모드(ai/shortest/priority) 결과를 전부 새 이동수단 기준으로 갱신한다.
+  // activeRoute만 갱신하면 탭을 바꿨을 때 이전 이동수단으로 계산된 값이 그대로 남는 문제가 있었다.
   const handleTravelModeChange = async (newMode) => {
     if (newMode === travelMode) return;
 
     setTravelMode(newMode);
 
-    // 현재 화면에 선택된 결과가 있으면 같은 순서의 새 ETA만 다시 구한다.
-    if (currentRoute?.locations?.length > 1) {
-      const result = await fetchRealEta(currentRoute.locations, newMode);
+    const staleModes = Object.entries(routeResults).filter(
+      ([, result]) => result?.locations?.length > 1
+    );
 
-      if (result) {
-        setRouteResults((prev) => ({
-          ...prev,
-          [activeRoute]: result,
-        }));
+    if (staleModes.length === 0) return;
+
+    setLoading(true);
+
+    try {
+      const freshByMode = {};
+
+      for (const [routeMode, result] of staleModes) {
+        const sequenceKey = routeSequenceKey(result.locations);
+
+        // 이미 같은 방문 순서로 새로 계산해둔 결과가 있으면 재사용한다.
+        // (같은 순서인데 실시간 API를 여러 번 부르면 숫자가 미세하게 달라질 수 있음)
+        const reusable = Object.entries(freshByMode).find(
+          ([, freshResult]) =>
+            routeSequenceKey(freshResult.locations) === sequenceKey
+        );
+
+        freshByMode[routeMode] = reusable
+          ? reusable[1]
+          : await fetchRealEta(result.locations, newMode);
       }
+
+      setRouteResults((prev) => {
+        const next = { ...prev };
+
+        for (const [routeMode, freshResult] of Object.entries(freshByMode)) {
+          if (freshResult) {
+            next[routeMode] = freshResult;
+          }
+        }
+
+        return next;
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
