@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import asyncio
 import itertools
 from typing import List, Optional, Dict, Tuple
 
@@ -9,7 +10,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.generativeai as genai
 
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -17,12 +17,10 @@ from ortools.constraint_solver import pywrapcp
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# backend/finetune/ 에서 파인튜닝해 Ollama에 등록한 로컬 모델을 사용한다 (Gemini 대체).
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "routemate-parser")
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 
 app = FastAPI(title="RouteMate API")
@@ -52,8 +50,13 @@ MAX_BRUTE_FORCE_STOPS = 9
 # 그래서 importance = 6 - priority 로 뒤집어서 사용한다 (priority1 -> importance5, priority5 -> importance1).
 # 즉 importance(priority) * position * AI_PRIORITY_WEIGHT_SEC 만큼 패널티가 붙어서,
 # "중요한 장소일수록 늦게 방문할 때 페널티가 커지도록" 만든다.
-# 값을 늘리면 "우선순위를 얼마나 강하게 반영할지"가 커진다. (기본값은 이동시간과 균형 잡힌 정도)
-AI_PRIORITY_WEIGHT_SEC = 300  # 5분
+# 값을 늘리면 "우선순위를 얼마나 강하게 반영할지"가 커진다.
+# 튜닝 근거(2026-08, 실측 스윕): 60 미만이면 우선순위가 과소반영되어 "가장 중요한 곳"이
+# 앞으로 오지 않고, 100을 넘어서면 순서가 우선순위 쪽으로 포화되어 AI 모드가 사실상
+# priority 모드와 같아진다(이전 기본값 300은 이동시간을 약 5배 압도했다). 그 사이 60~100이
+# "중요한 곳을 먼저 가되 나머지는 이동시간으로 최적화"하는 균형 구간이라, 하한(60)에서
+# 여유를 둔 100을 기본값으로 쓴다(우선순위 지배력 약 1.8배).
+AI_PRIORITY_WEIGHT_SEC = 100
 
 
 # =========================================================
@@ -129,13 +132,12 @@ def haversine_distance_m(a: LocationItem, b: LocationItem) -> float:
 
 
 # =========================================================
-# 1. Gemini 장소 추출
+# 1. 로컬 모델(Ollama) 장소 추출 + Kakao 지오코딩
 # =========================================================
 
-@app.post("/api/parse-tasks")
-async def parse_tasks(req: ParseRequest):
-    prompt = f"""
-아래 일정 문장에서 방문해야 할 장소를 모두 추출해 JSON 배열로 반환해줘.
+# backend/finetune/generate_dataset.py 의 TASK_INSTRUCTION, 그리고 파인튜닝 노트북의
+# alpaca_prompt 와 정확히 동일해야 한다 (학습 때와 다른 형식으로 프롬프트를 주면 성능이 크게 떨어짐).
+TASK_INSTRUCTION = """아래 일정 문장에서 방문해야 할 장소를 모두 추출해 JSON 배열로 반환해줘.
 
 각 항목은 반드시 다음 필드를 가져야 한다.
 - name: 장소명
@@ -146,25 +148,101 @@ async def parse_tasks(req: ParseRequest):
 - address: 알고 있다면 주소, 모르면 빈 문자열
 
 장소명이 애매하면 가장 유력한 장소명을 사용한다.
-응답에는 JSON 배열만 포함한다.
+응답에는 JSON 배열만 포함한다."""
 
-입력:
-{req.user_text}
-"""
+ALPACA_PROMPT = """다음은 작업을 설명하는 지시문과, 참고할 입력이 짝지어져 있습니다.
+요청을 적절히 완료하는 응답을 작성하세요.
 
-    if not GEMINI_API_KEY:
-        return {"status": "success", "data": mock_data(), "is_mock": True}
+### 지시문:
+{}
+
+### 입력:
+{}
+
+### 응답:
+{}"""
+
+
+async def call_ollama(prompt: str) -> str:
+    """Ollama에 등록된 파인튜닝 모델(routemate-parser)을 호출한다.
+
+    raw=True: Modelfile의 TEMPLATE(채팅 래핑) 없이 prompt를 있는 그대로 모델에 전달한다.
+    학습을 채팅 형식이 아니라 순수 텍스트 이어쓰기(alpaca_prompt) 형식으로 했기 때문에,
+    추론 때도 반드시 이 형식을 그대로 맞춰야 한다.
+    """
+    url = f"{OLLAMA_HOST}/api/generate"
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "raw": True,
+        "stream": False,
+        "options": {"temperature": 0.1},
+    }
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()["response"]
+
+
+async def geocode_place(name: str, client: httpx.AsyncClient) -> Optional[Dict[str, object]]:
+    """카카오 로컬 키워드 검색으로 장소명 -> 실제 좌표/주소를 조회한다.
+
+    LLM(Gemini든 파인튜닝한 로컬 모델이든)이 lat/lng를 직접 기억해서 답하는 건
+    본질적으로 신뢰할 수 없다 (특히 소형 모델은 거의 항상 틀림). 그래서 LLM은
+    장소명/할일/우선순위 추출까지만 맡기고, 좌표는 항상 이 함수로 다시 조회해서 덮어쓴다.
+    """
+    if not KAKAO_REST_API_KEY or not name:
+        return None
+
+    url = "https://dapi.kakao.com/v2/local/search/keyword.json"
+    headers = {"Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"}
+    params = {"query": name, "size": 1}
 
     try:
-        model = genai.GenerativeModel(
-            GEMINI_MODEL,
-            generation_config={"response_mime_type": "application/json"},
-        )
-        response = model.generate_content(prompt)
-        parsed = json.loads(response.text)
+        response = await client.get(url, headers=headers, params=params, timeout=5)
+        response.raise_for_status()
+        documents = response.json().get("documents") or []
+        if not documents:
+            return None
+        doc = documents[0]
+        return {
+            "lat": float(doc["y"]),
+            "lng": float(doc["x"]),
+            "address": doc.get("road_address_name") or doc.get("address_name") or "",
+        }
+    except Exception as e:
+        print(f"Kakao geocoding failed for '{name}':", e)
+        return None
+
+
+async def geocode_locations(locations: List[dict]) -> None:
+    """locations 리스트를 in-place로 geocode. 조회 실패 시 기존 값(LLM 추정치)을 그대로 둔다."""
+    if not KAKAO_REST_API_KEY:
+        return
+    async with httpx.AsyncClient() as client:
+        results = await asyncio.gather(*[geocode_place(loc["name"], client) for loc in locations])
+    for loc, geo in zip(locations, results):
+        if geo:
+            loc["lat"] = geo["lat"]
+            loc["lng"] = geo["lng"]
+            loc["address"] = geo["address"] or loc.get("address", "")
+
+
+@app.post("/api/parse-tasks")
+async def parse_tasks(req: ParseRequest):
+    prompt = ALPACA_PROMPT.format(TASK_INSTRUCTION, req.user_text, "")
+
+    try:
+        raw_text = await call_ollama(prompt)
+
+        start = raw_text.find("[")
+        end = raw_text.rfind("]")
+        if start == -1 or end == -1:
+            raise ValueError(f"응답에서 JSON 배열을 찾을 수 없습니다: {raw_text[:200]!r}")
+        parsed = json.loads(raw_text[start : end + 1])
 
         if not isinstance(parsed, list):
-            raise ValueError("Gemini 응답이 배열이 아닙니다.")
+            raise ValueError("모델 응답이 배열이 아닙니다.")
 
         normalized = []
         for item in parsed:
@@ -182,10 +260,13 @@ async def parse_tasks(req: ParseRequest):
         if not normalized:
             raise ValueError("장소가 추출되지 않았습니다.")
 
+        # 모델이 뱉은 lat/lng/address는 신뢰하지 않고 Kakao로 다시 조회해서 덮어쓴다.
+        await geocode_locations(normalized)
+
         return {"status": "success", "data": normalized, "is_mock": False}
 
     except Exception as e:
-        print("Gemini parsing failed:", e)
+        print("로컬 모델(Ollama) 파싱 실패:", e)
         return {"status": "success", "data": mock_data(), "is_mock": True}
 
 
@@ -502,7 +583,7 @@ async def calculate_route_eta(req: RouteDetailRequest):
 async def health():
     return {
         "status": "ok",
-        "gemini_configured": bool(GEMINI_API_KEY),
+        "ollama_host": OLLAMA_HOST,
+        "ollama_model": OLLAMA_MODEL,
         "kakao_rest_configured": bool(KAKAO_REST_API_KEY),
-        "gemini_model": GEMINI_MODEL,
     }

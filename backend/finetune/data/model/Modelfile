@@ -1,0 +1,12 @@
+FROM Qwen2.5-3B-Instruct.Q4_K_M.gguf
+
+# 학습 때(alpaca_prompt) 채팅 템플릿을 쓰지 않고 순수 텍스트 이어쓰기 형식으로 학습했으므로,
+# 여기서도 채팅 래핑 없이 prompt를 그대로 모델에 넘긴다 (raw passthrough).
+TEMPLATE """{{ .Prompt }}"""
+
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# 창작용이 아니라 구조화된 JSON 추출 태스크이므로 낮은 temperature로 결정적인 출력 유도
+PARAMETER temperature 0.1
+PARAMETER num_ctx 2048

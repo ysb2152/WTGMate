@@ -24,6 +24,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Fine-tuning: 대용량 모델 가중치는 커밋하지 않는다 (Colab 노트북으로 재생성).
+*.gguf
+*.safetensors
+*.bin
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json
