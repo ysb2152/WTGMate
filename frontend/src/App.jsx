@@ -9,6 +9,21 @@ const emptyRouteResult = {
   legs: [],
 };
 
+// "HH:MM"(24시간제) -> 오전/오후·시(1~12)·분 드롭다운 상태로 분해.
+// 값이 없으면 셋 다 빈 문자열(미선택).
+const apptPartsFromHHMM = (hhmm) => {
+  if (!hhmm || typeof hhmm !== 'string' || !hhmm.includes(':')) {
+    return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
+  }
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
+  }
+  const meridiem = h < 12 ? '오전' : '오후';
+  const hour12 = h % 12 === 0 ? 12 : h % 12; // 0시->12(오전 12시), 12시->12(오후 12시=정오)
+  return { appt_meridiem: meridiem, appt_hour: String(hour12), appt_minute: String(m) };
+};
+
 const toLocation = (place, task = '방문', priority = 3) => ({
   name: place.place_name,
   task,
@@ -20,6 +35,11 @@ const toLocation = (place, task = '방문', priority = 3) => ({
   appointment_time: null,
   // 약속 시각을 LLM이 산문에서 자동 추출했는지 표시(뱃지용). 사용자가 직접 수정하면 false로 내린다.
   appointment_from_ai: false,
+  // 약속 시각 입력용 오전/오후·시·분 드롭다운 상태(출발 예정 시각과 동일한 방식).
+  // appointment_time("HH:MM")은 이 셋에서 파생한다.
+  appt_meridiem: '',
+  appt_hour: '',
+  appt_minute: '',
 });
 
 function LandingOverlay({ onStart }) {
@@ -428,8 +448,10 @@ function App() {
         duration_min: Number(item.duration_min) > 0 ? Number(item.duration_min) : 30,
         // 약속 시각: LLM이 추출했으면 그 값, 없으면 사용자가 확인 단계에서 입력.
         appointment_time: item.appointment_time || null,
-        // 값이 LLM에서 왔으면 뱃지로 알려준다(사용자 수정 시 updateAppointment에서 내림).
+        // 값이 LLM에서 왔으면 뱃지로 알려준다(사용자 수정 시 updateAppointmentPart에서 내림).
         appointment_from_ai: Boolean(item.appointment_time),
+        // 드롭다운 상태도 LLM 값에서 분해해 채운다.
+        ...apptPartsFromHHMM(item.appointment_time),
       }));
 
       if (!parsedList.length) {
@@ -520,6 +542,9 @@ function App() {
         duration_min: old.duration_min ?? 0,
         appointment_time: old.appointment_time ?? null,
         appointment_from_ai: old.appointment_from_ai ?? false,
+        appt_meridiem: old.appt_meridiem ?? '',
+        appt_hour: old.appt_hour ?? '',
+        appt_minute: old.appt_minute ?? '',
       };
 
       return updated;
@@ -806,15 +831,44 @@ function App() {
     invalidateAllRoutes();
   };
 
-  const updateAppointment = (index, value) => {
-    // 빈 값이면 약속 없음(null)으로 저장.
-    const appointment = value ? value : null;
+  // 약속 시각 드롭다운(오전오후/시/분) 한 칸을 바꾼다. 셋이 다 채워졌을 때만
+  // appointment_time("HH:MM")이 만들어지고(composeStartTime 재사용), 하나라도 비면 null.
+  const updateAppointmentPart = (index, part, value) => {
+    setLocations((prev) => {
+      const updated = [...prev];
+      const loc = updated[index];
+      if (!loc) return prev;
+      const next = {
+        appt_meridiem: loc.appt_meridiem ?? '',
+        appt_hour: loc.appt_hour ?? '',
+        appt_minute: loc.appt_minute ?? '',
+        [part]: value,
+      };
+      updated[index] = {
+        ...loc,
+        ...next,
+        appointment_time: composeStartTime(next.appt_meridiem, next.appt_hour, next.appt_minute) || null,
+        // 사용자가 직접 손대면 더 이상 'AI 자동입력'이 아니므로 뱃지를 내린다.
+        appointment_from_ai: false,
+      };
+      return updated;
+    });
 
+    invalidateAllRoutes();
+  };
+
+  const clearAppointment = (index) => {
     setLocations((prev) => {
       const updated = [...prev];
       if (!updated[index]) return prev;
-      // 사용자가 직접 손대면 더 이상 'AI 자동입력'이 아니므로 뱃지를 내린다.
-      updated[index] = { ...updated[index], appointment_time: appointment, appointment_from_ai: false };
+      updated[index] = {
+        ...updated[index],
+        appointment_time: null,
+        appointment_from_ai: false,
+        appt_meridiem: '',
+        appt_hour: '',
+        appt_minute: '',
+      };
       return updated;
     });
 
@@ -1132,12 +1186,46 @@ function App() {
                           <span style={styles.aiBadge}>✨ AI 자동입력</span>
                         )}
                       </span>
-                      <input
-                        type="time"
-                        value={loc.appointment_time || ''}
-                        onChange={(e) => updateAppointment(idx, e.target.value)}
-                        style={styles.appointmentInput}
-                      />
+                      <div style={styles.apptSelectGroup}>
+                        <select
+                          value={loc.appt_meridiem || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_meridiem', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">오전/오후</option>
+                          <option value="오전">오전</option>
+                          <option value="오후">오후</option>
+                        </select>
+                        <select
+                          value={loc.appt_hour || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_hour', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">시</option>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                            <option key={h} value={h}>{h}시</option>
+                          ))}
+                        </select>
+                        <select
+                          value={loc.appt_minute || ''}
+                          onChange={(e) => updateAppointmentPart(idx, 'appt_minute', e.target.value)}
+                          style={styles.apptSelect}
+                        >
+                          <option value="">분</option>
+                          {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                            <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
+                          ))}
+                        </select>
+                        {loc.appointment_time && (
+                          <button
+                            type="button"
+                            onClick={() => clearAppointment(idx)}
+                            style={styles.timeClearButton}
+                          >
+                            지우기
+                          </button>
+                        )}
+                      </div>
                     </label>
                   </div>
 
@@ -2126,16 +2214,36 @@ const styles = {
   // --- 장소별 체류시간 / 약속시각 (장소 확인) ---
   timeFieldRow: {
     display: 'flex',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 10,
     marginTop: 9,
   },
 
   timeField: {
-    flex: 1,
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
+  },
+
+  apptSelectGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    flexWrap: 'wrap',
+  },
+
+  apptSelect: {
+    height: 32,
+    boxSizing: 'border-box',
+    padding: '0 6px',
+    border: '1px solid #d9dee8',
+    borderRadius: 8,
+    outline: 'none',
+    background: '#fff',
+    color: '#172033',
+    fontSize: 12,
+    cursor: 'pointer',
   },
 
   timeFieldLabel: {
@@ -2176,17 +2284,6 @@ const styles = {
   durationUnit: {
     fontSize: 11,
     color: '#8b94a3',
-  },
-
-  appointmentInput: {
-    height: 30,
-    boxSizing: 'border-box',
-    padding: '0 8px',
-    border: '1px solid #d9dee8',
-    borderRadius: 7,
-    outline: 'none',
-    fontSize: 12,
-    color: '#172033',
   },
 
   // --- 요약 카드(다크) 안의 시간 정보 ---
