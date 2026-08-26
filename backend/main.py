@@ -1,8 +1,10 @@
 import os
 import json
 import math
+import time
 import asyncio
 import itertools
+from collections import OrderedDict
 from typing import List, Optional, Dict, Tuple
 from urllib.parse import quote
 
@@ -598,22 +600,71 @@ async def get_leg_duration(origin: LocationItem, dest: LocationItem, mode: str, 
     return fallback_leg(origin, dest, mode)
 
 
+# 최종 경로(route-eta) 전용 leg 캐시.
+# 같은 좌표쌍+이동수단의 실 API 결과(거리/시간/경로 좌표)를 재사용해, 이동수단 토글이나
+# 동일 장소 재최적화 때 무료 쿼터를 다시 태우지 않는다.
+#  - 크기 상한(LRU): 상시 가동 시 무한 증가하지 않도록 오래된 항목부터 제거.
+#  - TTL: 자동차/대중교통은 실시간성이 있어 낡은 값 재사용을 막는다. 도보는 거리 불변이라 무기한.
+_FINAL_LEG_CACHE: "OrderedDict[Tuple, Tuple[Optional[float], Tuple[float, float, List[List[float]]]]]" = OrderedDict()
+_FINAL_LEG_CACHE_MAX = 512
+_FINAL_LEG_TTL_SEC: Dict[str, int] = {"car": 600, "transit": 600}  # walk 미지정 = 무기한
+
+
+def _final_leg_key(origin: LocationItem, dest: LocationItem, mode: str) -> Tuple:
+    return (mode, round(origin.lat, 6), round(origin.lng, 6), round(dest.lat, 6), round(dest.lng, 6))
+
+
+async def get_final_leg(origin: LocationItem, dest: LocationItem, mode: str, client: httpx.AsyncClient):
+    """최종 경로용: 실제 경로(path 포함)를 구하되 결과를 캐시한다.
+
+    실 API가 실제 좌표열(path)을 준 경우에만 캐시한다. 키가 없거나 일시적 실패로
+    추정 폴백된 결과(path 없음)는 무료이기도 하고, 굳혀두면 이후 실측 기회를 막으므로
+    캐시하지 않는다.
+    """
+    key = _final_leg_key(origin, dest, mode)
+    entry = _FINAL_LEG_CACHE.get(key)
+    if entry is not None:
+        expires_at, value = entry
+        if expires_at is None or expires_at > time.monotonic():
+            _FINAL_LEG_CACHE.move_to_end(key)  # LRU: 최근 사용으로 갱신
+            return value
+        del _FINAL_LEG_CACHE[key]  # 만료 → 제거 후 재조회
+
+    duration, distance, path = await get_leg_duration(origin, dest, mode, client, include_path=True)
+    if path:
+        ttl = _FINAL_LEG_TTL_SEC.get(mode)
+        expires_at = (time.monotonic() + ttl) if ttl else None
+        _FINAL_LEG_CACHE[key] = (expires_at, (duration, distance, path))
+        _FINAL_LEG_CACHE.move_to_end(key)
+        while len(_FINAL_LEG_CACHE) > _FINAL_LEG_CACHE_MAX:
+            _FINAL_LEG_CACHE.popitem(last=False)  # 가장 오래 안 쓴 항목 제거
+    return duration, distance, path
+
+
 async def build_time_distance_matrix(locations: List[LocationItem], travel_mode: str):
-    """모든 장소 쌍의 이동시간/거리 행렬. 최적화 비용의 기준 데이터가 된다."""
+    """모든 장소 쌍의 이동시간/거리 행렬(방문 순서 최적화용).
+
+    순서 결정에는 직선거리 기반 '추정치'만 사용한다. 실제 도로/인도/대중교통 API를
+    쓰면 호출이 O(n^2)로 폭증해(무료 쿼터가 매우 적은 Tmap/대중교통은 데모 1회도
+    못 돌릴 정도) 쿼터를 금방 소진한다. 반면 2~5곳 규모에서는 추정만으로도 방문
+    순서가 실제와 거의 동일하다. 정확한 거리/시간과 지도에 그릴 실제 경로는, 확정된
+    '최종 경로'에 대해서만 /api/route-eta가 실 API(n-1회)로 계산한다.
+    """
     n = len(locations)
     time_matrix = [[0] * n for _ in range(n)]
     distance_matrix = [[0] * n for _ in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            duration, distance, _ = fallback_leg(locations[i], locations[j], travel_mode)
+            time_matrix[i][j] = max(1, int(round(duration)))
+            distance_matrix[i][j] = max(1, int(round(distance)))
+
+    # 행렬 자체는 항상 추정치지만, 사용자에게 표시할 '추정' 여부는 최종 경로 기준으로
+    # 판단한다(실 API가 있는 모드면 최종 경로는 실측되므로 estimated=False).
     estimated = is_estimated_mode(travel_mode)
-
-    async with httpx.AsyncClient() as client:
-        for i in range(n):
-            for j in range(n):
-                if i == j:
-                    continue
-                duration, distance, _ = await get_leg_duration(locations[i], locations[j], travel_mode, client)
-                time_matrix[i][j] = max(1, int(round(duration)))
-                distance_matrix[i][j] = max(1, int(round(distance)))
-
     return time_matrix, distance_matrix, estimated
 
 
@@ -847,9 +898,10 @@ async def calculate_route_eta(req: RouteDetailRequest):
     async with httpx.AsyncClient() as client:
         for i in range(len(locs) - 1):
             origin, dest = locs[i], locs[i + 1]
-            # 최종 경로이므로 자동차 실제 도로 좌표열(path)까지 받아 지도에 그리게 한다.
-            duration, distance, path = await get_leg_duration(
-                origin, dest, req.travel_mode, client, include_path=True
+            # 최종 경로이므로 실제 도로/인도 좌표열(path)까지 받아 지도에 그리게 한다.
+            # get_final_leg는 결과를 캐시해 같은 구간 재요청 시 쿼터를 아낀다.
+            duration, distance, path = await get_final_leg(
+                origin, dest, req.travel_mode, client
             )
             total_duration += duration
             total_distance += distance
