@@ -18,4 +18,11 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // vite.config.js 등 설정 파일은 Node 환경에서 실행되므로 process 등 Node 전역을 허용한다.
+    files: ['*.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

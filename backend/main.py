@@ -986,7 +986,8 @@ async def calculate_route_eta(req: RouteDetailRequest):
                 "to": dest.name,
                 "duration_min": round(duration / 60, 1),
                 "distance_km": round(distance / 1000, 2),
-                # 자동차 실경로가 있으면 [[lat,lng],...], 도보/대중교통(폴백)이면 빈 리스트.
+                # 실 API 경로 좌표열([[lat,lng],...]). 자동차=도로, 도보=인도, 대중교통=정류장.
+                # 키 없음/실패로 추정 폴백되면 빈 리스트.
                 "path": path,
             })
 

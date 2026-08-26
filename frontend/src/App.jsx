@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -589,8 +589,8 @@ function App() {
       }
 
       const legs = Array.isArray(data.legs) ? data.legs : [];
-      // 자동차 실제 도로 좌표열을 leg 순서대로 이어붙인다([[lat,lng],...]).
-      // 도보/대중교통은 path가 비어 있어 routePath도 빈 배열이 된다(→ 지도에서 직선 폴백).
+      // 각 leg의 실제 경로 좌표열(자동차=도로, 도보=인도, 대중교통=정류장)을 순서대로 이어붙인다
+      // ([[lat,lng],...]). 실 API 실패로 path가 비면 빈 배열이 되어 지도에서 직선 폴백된다.
       const routePath = legs.flatMap((l) => (Array.isArray(l.path) ? l.path : []));
 
       return {
@@ -720,10 +720,6 @@ function App() {
       setLoading(false);
     }
   };
-
-  const handleAiRoute = () => calculateRoute('ai');
-
-  const handleShortestRoute = () => calculateRoute('shortest');
 
   const handlePriorityRoute = () => {
     if (!isPriorityDirty) {
@@ -947,8 +943,8 @@ function App() {
       bounds.extend(position);
     });
 
-    // 자동차 실제 도로 좌표열(routePath)이 있으면 그걸 따라 그리고,
-    // 없으면(도보/대중교통·경로 미계산) 지점 간 직선으로 폴백한다.
+    // 실제 경로 좌표열(routePath)이 있으면 그걸 따라 그리고(자동차·도보·대중교통 공통),
+    // 없으면(실 API 미사용/실패·경로 미계산) 지점 간 직선으로 폴백한다.
     const hasRealPath = Array.isArray(routePath) && routePath.length > 1;
     const drawPath = hasRealPath
       ? routePath

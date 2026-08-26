@@ -29,6 +29,9 @@ lerna-debug.log*
 *.safetensors
 *.bin
 
+# Claude Code: launch.json은 절대경로가 박혀 있어 로컬 전용(커밋 금지).
+.claude/launch.json
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json
