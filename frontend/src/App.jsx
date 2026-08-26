@@ -209,6 +209,9 @@ function App() {
   const [startMeridiem, setStartMeridiem] = useState(''); // '오전' | '오후'
   const [startHour, setStartHour] = useState('');         // '1'~'12'
   const [startMinute, setStartMinute] = useState('');     // '0'~'59'
+  // 체크 시 출발 시각을 현재 PC 시각으로 계산한다. 기본은 미체크(현재시각을 몰래 강제하지 않음).
+  // 미체크 + 출발시각 미선택이면 시간 계산 자체를 하지 않는다(도착시각/지각 표시 없음).
+  const [useCurrentTime, setUseCurrentTime] = useState(false);
 
   // 세 결과는 서로 덮어쓰지 않는다.
   const [routeResults, setRouteResults] = useState({
@@ -802,9 +805,14 @@ function App() {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  // 최적화/도착시각 계산에 쓸 출발 시각: 사용자가 고른 값이 있으면 그 값,
-  // 없으면 현재 PC 시각을 기준으로 삼는다(요청 시점 기준으로 도착 시각/약속 준수 계산).
-  const effectiveStartTime = () => startTime || currentHHMM();
+  // 백엔드에 보낼 출발 시각을 결정한다.
+  // ① '현재 시간 기준' 체크 -> 현재 PC 시각
+  // ② 미체크 + 출발시각 드롭다운 선택 -> 그 시각
+  // ③ 미체크 + 미선택 -> null (도착시각/지각 계산 안 함. 단 약속시각 순서는 백엔드가 지켜줌)
+  const effectiveStartTime = () => {
+    if (useCurrentTime) return currentHHMM();
+    return startTime || null;
+  };
 
   const updateStartTimePart = (part, value) => {
     const next = {
@@ -1105,7 +1113,8 @@ function App() {
                   <select
                     value={startMeridiem}
                     onChange={(e) => updateStartTimePart('meridiem', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">오전/오후</option>
                     <option value="오전">오전</option>
@@ -1114,7 +1123,8 @@ function App() {
                   <select
                     value={startHour}
                     onChange={(e) => updateStartTimePart('hour', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">시</option>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
@@ -1124,7 +1134,8 @@ function App() {
                   <select
                     value={startMinute}
                     onChange={(e) => updateStartTimePart('minute', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">분</option>
                     {Array.from({ length: 60 }, (_, i) => i).map((m) => (
@@ -1132,7 +1143,7 @@ function App() {
                     ))}
                   </select>
                 </div>
-                {startTime && (
+                {!useCurrentTime && startTime && (
                   <button
                     type="button"
                     onClick={clearStartTime}
@@ -1142,10 +1153,25 @@ function App() {
                   </button>
                 )}
               </div>
+
+              <label style={styles.currentTimeCheck}>
+                <input
+                  type="checkbox"
+                  checked={useCurrentTime}
+                  onChange={(e) => {
+                    setUseCurrentTime(e.target.checked);
+                    invalidateAllRoutes();
+                  }}
+                />
+                <span>현재 시간을 기준으로 계산하기</span>
+              </label>
+
               <div style={styles.startTimeHint}>
-                입력하면 약속 시각을 지키도록 경로를 짜고 도착 시각까지 계산합니다. (선택)
-                <br />
-                예정 시각을 선택하지 않으면 현재 시간을 기준으로 반영합니다.
+                {useCurrentTime
+                  ? '지금 출발한다고 보고 도착 시각·약속 준수를 계산합니다.'
+                  : startTime
+                  ? '선택한 출발 시각을 기준으로 도착 시각·약속 준수를 계산합니다.'
+                  : '출발 시각을 정하지 않아 도착 시각은 계산하지 않습니다. (약속 시각을 넣으면 그 순서는 지켜집니다)'}
               </div>
 
               <button
@@ -2223,6 +2249,16 @@ const styles = {
     fontSize: 11,
     cursor: 'pointer',
     padding: 2,
+  },
+
+  currentTimeCheck: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    color: '#4b5563',
+    marginTop: 8,
+    cursor: 'pointer',
   },
 
   startTimeHint: {

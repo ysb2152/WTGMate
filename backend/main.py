@@ -216,16 +216,36 @@ def build_schedule(
     return schedule, violations, t
 
 
+def chronological_penalty_sec(stop_order: List[int], all_locations: List[LocationItem]) -> int:
+    """출발 시각을 모를 때 쓰는 '약속 시간순 정렬' 페널티.
+    도착 시각/지각은 계산할 수 없으므로, 약속 시각이 입력된 장소들끼리만
+    '이른 약속 -> 늦은 약속' 순서가 되도록 역순 쌍(inversion) 1개당 큰 페널티를 준다.
+    (약속이 0~1개면 항상 0)"""
+    appt_seq = [
+        m
+        for node in stop_order
+        if (m := parse_hhmm(getattr(all_locations[node], "appointment_time", None))) is not None
+    ]
+    inversions = sum(
+        1
+        for i in range(len(appt_seq))
+        for j in range(i + 1, len(appt_seq))
+        if appt_seq[i] > appt_seq[j]
+    )
+    return inversions * APPOINTMENT_VIOLATION_PENALTY_SEC
+
+
 def appointment_penalty_sec(
     stop_order: List[int],
     all_locations: List[LocationItem],
     time_matrix: List[List[int]],
     start_min: Optional[int],
 ) -> int:
-    """주어진 목적지 방문 순서(출발지 제외)가 약속 시각을 어긴 개수에 비례한 페널티(초).
-    start_min이 없으면(출발 시각 미입력) 시간 제약을 적용하지 않는다."""
+    """주어진 목적지 방문 순서(출발지 제외)의 약속 관련 페널티(초).
+    - 출발 시각이 있으면: 실제 도착 시각을 계산해 지각(약속 위반) 개수에 비례한 페널티.
+    - 출발 시각이 없으면: 도착 계산이 불가하므로 약속 '시간순 정렬'만 유도하는 페널티."""
     if start_min is None:
-        return 0
+        return chronological_penalty_sec(stop_order, all_locations)
     _, violations, _ = build_schedule([0] + list(stop_order), all_locations, time_matrix, start_min)
     return len(violations) * APPOINTMENT_VIOLATION_PENALTY_SEC
 
