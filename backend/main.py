@@ -1,9 +1,12 @@
 import os
 import json
 import math
+import time
 import asyncio
 import itertools
+from collections import OrderedDict
 from typing import List, Optional, Dict, Tuple
+from urllib.parse import quote
 
 import httpx
 from dotenv import load_dotenv
@@ -21,6 +24,9 @@ load_dotenv()
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "wtgmate-parser")
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
+# Tmap(SK) 보행자 경로안내 API 키. 있으면 도보를 실제 인도 경로/거리/시간으로 계산하고,
+# 없으면 기존 추정값(fallback_leg)으로 동작한다.
+TMAP_APP_KEY = os.getenv("TMAP_APP_KEY")
 
 
 app = FastAPI(title="WTGMate API")
@@ -496,6 +502,65 @@ async def get_car_leg(origin: LocationItem, dest: LocationItem, client: httpx.As
     return float(summary["duration"]), float(summary["distance"]), path
 
 
+async def get_walk_leg(origin: LocationItem, dest: LocationItem, client: httpx.AsyncClient, include_path: bool = False):
+    """Tmap(SK) 보행자 경로안내. 반환: (duration sec, distance m, path[[lat,lng]...]).
+
+    응답은 GeoJSON FeatureCollection이며,
+      - 총거리/총시간은 첫 Point feature의 properties(totalDistance[m], totalTime[sec]),
+      - 실제 인도 경로는 LineString feature들의 coordinates([경도,위도] 순)에 들어있다.
+    """
+    if not TMAP_APP_KEY:
+        raise RuntimeError("TMAP_APP_KEY가 없습니다.")
+
+    url = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1"
+    headers = {
+        "appKey": TMAP_APP_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    body = {
+        "startX": origin.lng,
+        "startY": origin.lat,
+        "endX": dest.lng,
+        "endY": dest.lat,
+        "startName": quote(origin.name or "출발"),
+        "endName": quote(dest.name or "도착"),
+    }
+
+    response = await client.post(url, headers=headers, json=body, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    features = data.get("features") or []
+    total_distance = None
+    total_time = None
+    path: List[List[float]] = []
+    for f in features:
+        props = f.get("properties") or {}
+        if total_distance is None and props.get("totalDistance") is not None:
+            total_distance = float(props["totalDistance"])
+            total_time = float(props.get("totalTime") or 0)
+        geom = f.get("geometry") or {}
+        if include_path and geom.get("type") == "LineString":
+            for coord in geom.get("coordinates") or []:
+                # coord = [경도(lng), 위도(lat)] -> [lat, lng]
+                path.append([coord[1], coord[0]])
+
+    if total_distance is None:
+        raise RuntimeError("Tmap 보행자 경로 응답에 총 거리 정보가 없습니다.")
+    return float(total_time or 0), total_distance, path
+
+
+def is_estimated_mode(mode: str) -> bool:
+    """해당 이동수단의 거리/시간이 '실제 API'가 아니라 보정 추정값인지 여부.
+    car: Kakao 키 없으면 추정 / walk: Tmap 키 없으면 추정 / transit: 아직 항상 추정."""
+    if mode == "car":
+        return not KAKAO_REST_API_KEY
+    if mode == "walk":
+        return not TMAP_APP_KEY
+    return True  # transit 등은 아직 실API 미연동
+
+
 def fallback_leg(origin: LocationItem, dest: LocationItem, mode: str):
     """자동차 API 실패 또는 도보/대중교통 임시 계산.
     신규 카카오맵 도보/대중교통 API(2026.07 오픈) 스펙 확정되면 실API로 교체할 것."""
@@ -526,25 +591,80 @@ async def get_leg_duration(origin: LocationItem, dest: LocationItem, mode: str, 
         except Exception as e:
             print(f"Kakao 자동차 API 실패: {origin.name} -> {dest.name}: {e}")
 
+    if mode == "walk" and TMAP_APP_KEY:
+        try:
+            return await get_walk_leg(origin, dest, client, include_path=include_path)
+        except Exception as e:
+            print(f"Tmap 보행자 API 실패: {origin.name} -> {dest.name}: {e}")
+
     return fallback_leg(origin, dest, mode)
 
 
+# 최종 경로(route-eta) 전용 leg 캐시.
+# 같은 좌표쌍+이동수단의 실 API 결과(거리/시간/경로 좌표)를 재사용해, 이동수단 토글이나
+# 동일 장소 재최적화 때 무료 쿼터를 다시 태우지 않는다.
+#  - 크기 상한(LRU): 상시 가동 시 무한 증가하지 않도록 오래된 항목부터 제거.
+#  - TTL: 자동차/대중교통은 실시간성이 있어 낡은 값 재사용을 막는다. 도보는 거리 불변이라 무기한.
+_FINAL_LEG_CACHE: "OrderedDict[Tuple, Tuple[Optional[float], Tuple[float, float, List[List[float]]]]]" = OrderedDict()
+_FINAL_LEG_CACHE_MAX = 512
+_FINAL_LEG_TTL_SEC: Dict[str, int] = {"car": 600, "transit": 600}  # walk 미지정 = 무기한
+
+
+def _final_leg_key(origin: LocationItem, dest: LocationItem, mode: str) -> Tuple:
+    return (mode, round(origin.lat, 6), round(origin.lng, 6), round(dest.lat, 6), round(dest.lng, 6))
+
+
+async def get_final_leg(origin: LocationItem, dest: LocationItem, mode: str, client: httpx.AsyncClient):
+    """최종 경로용: 실제 경로(path 포함)를 구하되 결과를 캐시한다.
+
+    실 API가 실제 좌표열(path)을 준 경우에만 캐시한다. 키가 없거나 일시적 실패로
+    추정 폴백된 결과(path 없음)는 무료이기도 하고, 굳혀두면 이후 실측 기회를 막으므로
+    캐시하지 않는다.
+    """
+    key = _final_leg_key(origin, dest, mode)
+    entry = _FINAL_LEG_CACHE.get(key)
+    if entry is not None:
+        expires_at, value = entry
+        if expires_at is None or expires_at > time.monotonic():
+            _FINAL_LEG_CACHE.move_to_end(key)  # LRU: 최근 사용으로 갱신
+            return value
+        del _FINAL_LEG_CACHE[key]  # 만료 → 제거 후 재조회
+
+    duration, distance, path = await get_leg_duration(origin, dest, mode, client, include_path=True)
+    if path:
+        ttl = _FINAL_LEG_TTL_SEC.get(mode)
+        expires_at = (time.monotonic() + ttl) if ttl else None
+        _FINAL_LEG_CACHE[key] = (expires_at, (duration, distance, path))
+        _FINAL_LEG_CACHE.move_to_end(key)
+        while len(_FINAL_LEG_CACHE) > _FINAL_LEG_CACHE_MAX:
+            _FINAL_LEG_CACHE.popitem(last=False)  # 가장 오래 안 쓴 항목 제거
+    return duration, distance, path
+
+
 async def build_time_distance_matrix(locations: List[LocationItem], travel_mode: str):
-    """모든 장소 쌍의 이동시간/거리 행렬. 최적화 비용의 기준 데이터가 된다."""
+    """모든 장소 쌍의 이동시간/거리 행렬(방문 순서 최적화용).
+
+    순서 결정에는 직선거리 기반 '추정치'만 사용한다. 실제 도로/인도/대중교통 API를
+    쓰면 호출이 O(n^2)로 폭증해(무료 쿼터가 매우 적은 Tmap/대중교통은 데모 1회도
+    못 돌릴 정도) 쿼터를 금방 소진한다. 반면 2~5곳 규모에서는 추정만으로도 방문
+    순서가 실제와 거의 동일하다. 정확한 거리/시간과 지도에 그릴 실제 경로는, 확정된
+    '최종 경로'에 대해서만 /api/route-eta가 실 API(n-1회)로 계산한다.
+    """
     n = len(locations)
     time_matrix = [[0] * n for _ in range(n)]
     distance_matrix = [[0] * n for _ in range(n)]
-    estimated = travel_mode != "car" or not KAKAO_REST_API_KEY
 
-    async with httpx.AsyncClient() as client:
-        for i in range(n):
-            for j in range(n):
-                if i == j:
-                    continue
-                duration, distance, _ = await get_leg_duration(locations[i], locations[j], travel_mode, client)
-                time_matrix[i][j] = max(1, int(round(duration)))
-                distance_matrix[i][j] = max(1, int(round(distance)))
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            duration, distance, _ = fallback_leg(locations[i], locations[j], travel_mode)
+            time_matrix[i][j] = max(1, int(round(duration)))
+            distance_matrix[i][j] = max(1, int(round(distance)))
 
+    # 행렬 자체는 항상 추정치지만, 사용자에게 표시할 '추정' 여부는 최종 경로 기준으로
+    # 판단한다(실 API가 있는 모드면 최종 경로는 실측되므로 estimated=False).
+    estimated = is_estimated_mode(travel_mode)
     return time_matrix, distance_matrix, estimated
 
 
@@ -771,16 +891,17 @@ async def calculate_route_eta(req: RouteDetailRequest):
     total_duration = 0.0
     total_distance = 0.0
     legs = []
-    estimated = req.travel_mode != "car" or not KAKAO_REST_API_KEY
+    estimated = is_estimated_mode(req.travel_mode)
 
     leg_secs: List[float] = []
 
     async with httpx.AsyncClient() as client:
         for i in range(len(locs) - 1):
             origin, dest = locs[i], locs[i + 1]
-            # 최종 경로이므로 자동차 실제 도로 좌표열(path)까지 받아 지도에 그리게 한다.
-            duration, distance, path = await get_leg_duration(
-                origin, dest, req.travel_mode, client, include_path=True
+            # 최종 경로이므로 실제 도로/인도 좌표열(path)까지 받아 지도에 그리게 한다.
+            # get_final_leg는 결과를 캐시해 같은 구간 재요청 시 쿼터를 아낀다.
+            duration, distance, path = await get_final_leg(
+                origin, dest, req.travel_mode, client
             )
             total_duration += duration
             total_distance += distance
@@ -857,4 +978,5 @@ async def health():
         "ollama_host": OLLAMA_HOST,
         "ollama_model": OLLAMA_MODEL,
         "kakao_rest_configured": bool(KAKAO_REST_API_KEY),
+        "tmap_configured": bool(TMAP_APP_KEY),
     }
