@@ -605,6 +605,9 @@ function App() {
         startTimeUsed: data.start_time || null,
         finishTime: data.finish_time || null,
         totalElapsedMin: data.total_elapsed_min ?? null,
+        // 출발시각 미입력(③)인데 약속이 있어 백엔드가 역산한 '추천 출발시각'.
+        recommendedStartTime: data.recommended_start_time || null,
+        recommendedFeasible: data.recommended_feasible ?? null,
         stops: Array.isArray(data.stops) ? data.stops : null,
         appointmentViolations: Array.isArray(data.appointment_violations)
           ? data.appointment_violations
@@ -834,6 +837,18 @@ function App() {
     setStartMinute('');
     setStartTime('');
     invalidateAllRoutes();
+  };
+
+  // 역산으로 추천된 출발 시각("HH:MM")을 실제 출발시각 드롭다운에 채워 확정한다(③ -> ②).
+  const applyRecommendedStartTime = (hhmm) => {
+    const parts = apptPartsFromHHMM(hhmm); // {appt_meridiem, appt_hour, appt_minute}
+    if (!parts.appt_hour) return;
+    setUseCurrentTime(false);
+    setStartMeridiem(parts.appt_meridiem);
+    setStartHour(parts.appt_hour);
+    setStartMinute(parts.appt_minute);
+    setStartTime(hhmm);
+    invalidateAllRoutes(); // 새 출발시각으로 다시 계산하도록 캐시 비움
   };
 
   const updateDuration = (index, value) => {
@@ -1415,11 +1430,31 @@ function App() {
                 {currentRoute.finishTime && (
                   <div style={styles.scheduleSummary}>
                     <span style={styles.scheduleSummaryText}>
-                      🕒 {currentRoute.startTimeUsed} 출발 → {currentRoute.finishTime} 종료
+                      {currentRoute.recommendedStartTime ? (
+                        <>🕒 추천 출발시각 <strong>{currentRoute.recommendedStartTime}</strong> → {currentRoute.finishTime} 종료</>
+                      ) : (
+                        <>🕒 {currentRoute.startTimeUsed} 출발 → {currentRoute.finishTime} 종료</>
+                      )}
                       {currentRoute.totalElapsedMin != null && (
                         <> · 총 {formatDuration(currentRoute.totalElapsedMin)}(대기·체류 포함)</>
                       )}
                     </span>
+                    {currentRoute.recommendedStartTime && (
+                      <div style={styles.recommendRow}>
+                        <span style={styles.recommendHint}>
+                          {currentRoute.recommendedFeasible === false
+                            ? '약속을 모두 지킬 수는 없어요. 위반을 최소로 하는 가장 늦은 출발 시각입니다.'
+                            : '약속에 늦지 않게 도착하는 가장 늦은 출발 시각이에요.'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => applyRecommendedStartTime(currentRoute.recommendedStartTime)}
+                          style={styles.recommendApplyBtn}
+                        >
+                          이 시각으로 설정
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2355,6 +2390,35 @@ const styles = {
     fontSize: 12,
     color: '#cfd6e4',
     lineHeight: 1.5,
+  },
+
+  recommendRow: {
+    marginTop: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+
+  recommendHint: {
+    fontSize: 11,
+    color: '#9aa4b8',
+    lineHeight: 1.4,
+    flex: 1,
+    minWidth: 0,
+  },
+
+  recommendApplyBtn: {
+    flexShrink: 0,
+    border: '1px solid #635BFF',
+    background: 'rgba(99, 91, 255, 0.15)',
+    color: '#c3bdff',
+    fontSize: 11,
+    fontWeight: 600,
+    borderRadius: 7,
+    padding: '5px 10px',
+    cursor: 'pointer',
   },
 
   violationNotice: {
