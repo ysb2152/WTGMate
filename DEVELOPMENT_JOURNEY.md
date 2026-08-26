@@ -1,11 +1,11 @@
-# RouteMate 개발 기록 (Living Document)
+# WTGMate 개발 기록 (Living Document)
 
 > **이 문서는 코드와 함께 git으로 관리되는 "살아있는" 개발 기록입니다.**
 > 기능이 발전할 때마다 갱신합니다. 고민한 것 · 선택 · 그 이유 · 어려웠던 점을 남겨,
 > 나중에 포트폴리오/면접 자료로 바로 쓸 수 있게 하는 것이 목적입니다.
 > 원본 포트폴리오 초안(Word)을 토대로, 이후 실제 개발 진행분을 현행화·통합했습니다.
 
-- **프로젝트**: RouteMate — Smart Route Planner (자연어 일정 → 장소 추출·검증 → 경로 최적화·비교)
+- **프로젝트**: WTGMate — Smart Route Planner (자연어 일정 → 장소 추출·검증 → 경로 최적화·비교)
 - **스택**: React + Vite (front) / FastAPI + Python (back) / OR-Tools, Kakao Maps·Mobility·Local, 로컬 파인튜닝 LLM(Ollama)
 - **레포**: `todo-route-planner` (front/back 모노 구조)
 
@@ -91,7 +91,7 @@
 데모를 상시 띄우거나 오프라인에서 돌리기 어렵다.
 
 **선택.** 소형 오픈모델 **Qwen2.5-3B-Instruct**를 **QLoRA로 파인튜닝**해, GGUF(q4_k_m)로 변환하고
-**Ollama에 `routemate-parser`로 등록**해 서빙한다. Gemini는 버리지 않고 **학습 데이터 생성용 교사 모델**로만 남긴다.
+**Ollama에 `wtgmate-parser`로 등록**해 서빙한다. Gemini는 버리지 않고 **학습 데이터 생성용 교사 모델**로만 남긴다.
 
 **왜.**
 - 추론 비용 0 · 오프라인 · 프라이버시. 태스크가 좁아서(장소 추출 JSON) 소형 모델도 파인튜닝하면 충분.
@@ -156,7 +156,7 @@ input에 시각이 있는데 라벨이 없어 그대로 쓰면 "시각을 무시
 - 약속시각 입력을 출발시각과 동일한 **오전/오후·시·분 드롭다운**으로 통일.
 
 **어려웠던 점.** 재파인튜닝은 GPU가 필요해 Colab에서만 가능. Colab 노트북의 GGUF 다운로드 셀 경로 버그
-(`routemate_parser/` → 실제 `routemate_parser_gguf/`)와, Unsloth가 자동 생성하는 채팅형 Modelfile을
+(`wtgmate_parser/` → 실제 `wtgmate_parser_gguf/`)와, Unsloth가 자동 생성하는 채팅형 Modelfile을
 쓰면 raw passthrough 학습과 어긋나 성능이 떨어지는 함정을 피해야 했다(프로젝트 Modelfile 사용).
 
 ## B-5. 경로 계산 전수 검증 + 이동수단 재최적화 버그 발견·수정

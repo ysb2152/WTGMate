@@ -1,4 +1,4 @@
-"""RouteMate 경로 계산 전수 검증 하네스.
+"""WTGMate 경로 계산 전수 검증 하네스.
 
 UI가 호출하는 백엔드 API(/api/parse-tasks, /api/optimize-route, /api/route-eta)를
 직접 구동해 10개 시나리오 x 3 이동수단(car/walk/transit) x 3 최적화모드(ai/shortest/priority)를
@@ -196,10 +196,10 @@ def write_report(results):
     errors = [r for r in results if r.get("error")]
 
     L = []
-    L.append("# RouteMate 경로 계산 검증 리포트")
+    L.append("# WTGMate 경로 계산 검증 리포트")
     L.append("")
     L.append(f"- 생성 시각: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    L.append(f"- 백엔드: `{BASE}` (모델 `routemate-parser`)")
+    L.append(f"- 백엔드: `{BASE}` (모델 `wtgmate-parser`)")
     L.append(f"- 시나리오: {len(results)}개 x 이동수단 3(car/walk/transit) x 최적화 3(ai/shortest/priority) = 계산 {len(results)*9}건")
     L.append(f"- 현재 PC 시각(BLANK 출발시각 대체값): `{NOW_HHMM}`")
     L.append(f"- **정합성 검사 통과: {passed}/{total_checks}**" + (f" · 오류 시나리오 {len(errors)}개" if errors else ""))

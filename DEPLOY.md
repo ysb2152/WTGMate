@@ -45,7 +45,7 @@ ALB(월 ~$16)와 API Gateway(요청 29초 하드 리밋)를 모두 피하기 위
 ## Phase 2 — 모델(GGUF) 전달
 
 - GGUF를 **S3 버킷**에 업로드.
-- 인스턴스 기동 스크립트(user-data 또는 배포 스크립트)에서 S3에서 내려받아 `ollama create routemate-parser -f Modelfile` 실행.
+- 인스턴스 기동 스크립트(user-data 또는 배포 스크립트)에서 S3에서 내려받아 `ollama create wtgmate-parser -f Modelfile` 실행.
 - 대안: Docker 이미지에 굽기(이미지가 커지는 단점).
 
 ## Phase 3 — AWS 인프라
