@@ -27,6 +27,9 @@ KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
 # Tmap(SK) 보행자 경로안내 API 키. 있으면 도보를 실제 인도 경로/거리/시간으로 계산하고,
 # 없으면 기존 추정값(fallback_leg)으로 동작한다.
 TMAP_APP_KEY = os.getenv("TMAP_APP_KEY")
+# ODsay 대중교통 길찾기 API 키. 있으면 대중교통을 실제 경로/시간으로 계산하고,
+# 없으면 기존 추정값(fallback_leg)으로 동작한다. (무료 ~1000/일로 Tmap 대중교통 10/일보다 넉넉)
+ODSAY_API_KEY = os.getenv("ODSAY_API_KEY")
 
 
 app = FastAPI(title="WTGMate API")
@@ -551,19 +554,85 @@ async def get_walk_leg(origin: LocationItem, dest: LocationItem, client: httpx.A
     return float(total_time or 0), total_distance, path
 
 
+async def get_transit_leg(origin: LocationItem, dest: LocationItem, client: httpx.AsyncClient, include_path: bool = False):
+    """ODsay 대중교통 길찾기(searchPubTransPathT). 반환: (duration sec, distance m, path[[lat,lng]...]).
+
+    응답 `result.path[]` 중 첫 경로(최적)를 사용한다.
+      - 총시간: `path[0].info.totalTime`(분).
+      - 총거리: 각 `subPath[].distance`(m) 합(도보 환승 구간 포함).
+      - 실제 경로: 각 subPath의 `passStopList.stations[]`(x=경도, y=위도)를 순서대로 이어 붙인다.
+        역/정류장 좌표 기반 폴리라인이라 loadLane 2차 호출 없이 1회로 끝내 쿼터를 아낀다.
+    """
+    if not ODSAY_API_KEY:
+        raise RuntimeError("ODSAY_API_KEY가 없습니다.")
+
+    url = "https://api.odsay.com/v1/api/searchPubTransPathT"
+    # apiKey는 httpx가 자동 URL 인코딩한다(원문 그대로 전달).
+    params = {
+        "SX": origin.lng,
+        "SY": origin.lat,
+        "EX": dest.lng,
+        "EY": dest.lat,
+        "apiKey": ODSAY_API_KEY,
+    }
+
+    response = await client.get(url, params=params, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    # ODsay는 실패 시 200이라도 본문에 error를 담는다(예: 출발-도착이 너무 가까움 → 도보 권장).
+    if data.get("error"):
+        raise RuntimeError(f"ODsay 오류: {data.get('error')}")
+
+    paths = ((data.get("result") or {}).get("path")) or []
+    if not paths:
+        raise RuntimeError("ODsay 대중교통 경로가 없습니다.")
+
+    best = paths[0]
+    info = best.get("info") or {}
+    total_time_min = info.get("totalTime")
+    if total_time_min is None:
+        raise RuntimeError("ODsay 응답에 totalTime이 없습니다.")
+
+    total_distance = 0.0
+    path: List[List[float]] = []
+    for sp in best.get("subPath") or []:
+        d = sp.get("distance")
+        if d:
+            total_distance += float(d)
+        if include_path:
+            stations = ((sp.get("passStopList") or {}).get("stations")) or []
+            for st in stations:
+                x, y = st.get("x"), st.get("y")
+                if x is not None and y is not None:
+                    path.append([float(y), float(x)])  # [위도, 경도]
+
+    # 도보 환승만 있어 정류장 좌표가 없으면, 최소한 출발-도착 직선이라도 그리게 한다.
+    if include_path and len(path) < 2:
+        path = [[origin.lat, origin.lng], [dest.lat, dest.lng]]
+
+    # 총거리 정보가 없으면 직선거리로 보정(시간은 실측 totalTime 사용).
+    if total_distance <= 0:
+        total_distance = haversine_distance_m(origin, dest)
+
+    return float(total_time_min) * 60.0, total_distance, path
+
+
 def is_estimated_mode(mode: str) -> bool:
     """해당 이동수단의 거리/시간이 '실제 API'가 아니라 보정 추정값인지 여부.
-    car: Kakao 키 없으면 추정 / walk: Tmap 키 없으면 추정 / transit: 아직 항상 추정."""
+    car: Kakao 키 없으면 추정 / walk: Tmap 키 없으면 추정 / transit: ODsay 키 없으면 추정."""
     if mode == "car":
         return not KAKAO_REST_API_KEY
     if mode == "walk":
         return not TMAP_APP_KEY
-    return True  # transit 등은 아직 실API 미연동
+    if mode == "transit":
+        return not ODSAY_API_KEY
+    return True
 
 
 def fallback_leg(origin: LocationItem, dest: LocationItem, mode: str):
-    """자동차 API 실패 또는 도보/대중교통 임시 계산.
-    신규 카카오맵 도보/대중교통 API(2026.07 오픈) 스펙 확정되면 실API로 교체할 것."""
+    """실 API가 없거나 실패했을 때 쓰는 추정 계산(직선거리×도로보정×모드별 속도).
+    car=Kakao, walk=Tmap, transit=ODsay 실 API가 정상일 땐 이 함수를 타지 않는다."""
     straight_m = haversine_distance_m(origin, dest)
 
     if mode == "walk":
@@ -596,6 +665,12 @@ async def get_leg_duration(origin: LocationItem, dest: LocationItem, mode: str, 
             return await get_walk_leg(origin, dest, client, include_path=include_path)
         except Exception as e:
             print(f"Tmap 보행자 API 실패: {origin.name} -> {dest.name}: {e}")
+
+    if mode == "transit" and ODSAY_API_KEY:
+        try:
+            return await get_transit_leg(origin, dest, client, include_path=include_path)
+        except Exception as e:
+            print(f"ODsay 대중교통 API 실패: {origin.name} -> {dest.name}: {e}")
 
     return fallback_leg(origin, dest, mode)
 
@@ -979,4 +1054,5 @@ async def health():
         "ollama_model": OLLAMA_MODEL,
         "kakao_rest_configured": bool(KAKAO_REST_API_KEY),
         "tmap_configured": bool(TMAP_APP_KEY),
+        "odsay_configured": bool(ODSAY_API_KEY),
     }
