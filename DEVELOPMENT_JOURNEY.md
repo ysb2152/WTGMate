@@ -15,6 +15,7 @@
 
 | 시점 | 구분 | 한 일 | 관련 |
 |---|---|---|---|
+| 2026-08-26 | fix/test | `clamp_priority(0)`가 falsy로 3이 되던 버그 수정 + 헬퍼 유닛테스트 12개 추가 | PR #7 |
 | 2026-08-26 | feat | 출발시각 미입력 시 약속 기준 '추천 출발시각' 역산 | PR #6 (`feature/car-real-route`) |
 | 2026-08-26 | feat | 자동차 실제 도로 경로를 지도에 표시(Kakao Mobility 좌표열 활용) | PR #6 (`feature/car-real-route`) |
 | 2026-08-26 | feat | 출발시각 '현재시간 기준' 체크박스 + 미선택 시 시간계산 생략(약속 순서는 유지) | PR #6 (`feature/car-real-route`) |
@@ -259,7 +260,7 @@ input에 시각이 있는데 라벨이 없어 그대로 쓰면 "시각을 무시
 - [ ] 도보/대중교통 **실제 경로 API**(Tmap 보행자·대중교통/ODsay) 연동 — 현재는 보정값(estimated) ← **다음 작업(B안)**
 - [ ] 경로별 총시간·총거리·우선순위 만족도 동시 표시, 지도 구간 정보 강화
 - [ ] 성능: 장소 쌍 이동시간 조회 병렬화·캐싱
-- [ ] 테스트: 우선순위 역전·동일 좌표·API 실패·후보 변경 등 케이스 확대(검증 하네스 기반)
+- [~] 테스트: 순수 헬퍼(clamp_priority·importance_score·haversine) 유닛테스트 12개 추가(**진행 중**, `backend/tests/test_helpers.py`). 여기서 `clamp_priority(0)`이 `value or 3` 때문에 3이 되던 버그도 발견·수정(출발지 priority=0에 영향). 향후 우선순위 역전·API 실패·후보 변경 등 케이스로 확대.
 
 ---
 
