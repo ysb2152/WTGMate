@@ -46,20 +46,20 @@ function LandingOverlay({ onStart }) {
   return (
     <div style={landingStyles.overlay}>
       <style>{`
-        @keyframes routemateFadeUp {
+        @keyframes wtgmateFadeUp {
           from { opacity: 0; transform: translateY(14px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .routemate-landing-anim { animation: none !important; }
+          .wtgmate-landing-anim { animation: none !important; }
         }
       `}</style>
 
       <div style={landingStyles.glow} />
 
-      <div className="routemate-landing-anim" style={landingStyles.content}>
+      <div className="wtgmate-landing-anim" style={landingStyles.content}>
         <div style={landingStyles.icon}>R</div>
-        <h1 style={landingStyles.title}>RouteMate</h1>
+        <h1 style={landingStyles.title}>WTGMate</h1>
         <p style={landingStyles.subtitle}>Smart Route Planner</p>
 
         <button
@@ -1057,7 +1057,7 @@ function App() {
         >
           <div style={styles.brandIcon}>R</div>
           <div>
-            <div style={styles.brandName}>RouteMate</div>
+            <div style={styles.brandName}>WTGMate</div>
             <div style={styles.brandSub}>Smart Route Planner</div>
           </div>
         </div>
@@ -1589,7 +1589,7 @@ function App() {
         <div ref={mapContainer} style={styles.map} />
 
         <div style={styles.mapOverlay}>
-          <div style={styles.mapOverlayTitle}>RouteMate</div>
+          <div style={styles.mapOverlayTitle}>WTGMate</div>
           <div style={styles.mapOverlayText}>
             {locations.length
               ? `${locations.length}개의 방문 장소`
@@ -1633,7 +1633,7 @@ const landingStyles = {
     flexDirection: 'column',
     alignItems: 'center',
     textAlign: 'center',
-    animation: 'routemateFadeUp 0.6s ease-out both',
+    animation: 'wtgmateFadeUp 0.6s ease-out both',
   },
 
   icon: {

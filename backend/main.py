@@ -22,14 +22,14 @@ load_dotenv()
 
 # backend/finetune/ 에서 파인튜닝해 Ollama에 등록한 로컬 모델을 사용한다 (Gemini 대체).
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "routemate-parser")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "wtgmate-parser")
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
 # Tmap(SK) 보행자 경로안내 API 키. 있으면 도보를 실제 인도 경로/거리/시간으로 계산하고,
 # 없으면 기존 추정값(fallback_leg)으로 동작한다.
 TMAP_APP_KEY = os.getenv("TMAP_APP_KEY")
 
 
-app = FastAPI(title="RouteMate API")
+app = FastAPI(title="WTGMate API")
 
 
 app.add_middleware(
@@ -341,7 +341,7 @@ ALPACA_PROMPT = """다음은 작업을 설명하는 지시문과, 참고할 입�
 
 
 async def call_ollama(prompt: str) -> str:
-    """Ollama에 등록된 파인튜닝 모델(routemate-parser)을 호출한다.
+    """Ollama에 등록된 파인튜닝 모델(wtgmate-parser)을 호출한다.
 
     raw=True: Modelfile의 TEMPLATE(채팅 래핑) 없이 prompt를 있는 그대로 모델에 전달한다.
     학습을 채팅 형식이 아니라 순수 텍스트 이어쓰기(alpaca_prompt) 형식으로 했기 때문에,
