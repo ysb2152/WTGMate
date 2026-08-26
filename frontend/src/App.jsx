@@ -209,6 +209,9 @@ function App() {
   const [startMeridiem, setStartMeridiem] = useState(''); // '오전' | '오후'
   const [startHour, setStartHour] = useState('');         // '1'~'12'
   const [startMinute, setStartMinute] = useState('');     // '0'~'59'
+  // 체크 시 출발 시각을 현재 PC 시각으로 계산한다. 기본은 미체크(현재시각을 몰래 강제하지 않음).
+  // 미체크 + 출발시각 미선택이면 시간 계산 자체를 하지 않는다(도착시각/지각 표시 없음).
+  const [useCurrentTime, setUseCurrentTime] = useState(false);
 
   // 세 결과는 서로 덮어쓰지 않는다.
   const [routeResults, setRouteResults] = useState({
@@ -342,10 +345,10 @@ function App() {
 
   useEffect(() => {
     if (mapInstance.current) {
+      const hasRoute = currentRoute.locations?.length;
       drawMapElements(
-        currentRoute.locations?.length
-          ? currentRoute.locations
-          : [startLocation, ...locations]
+        hasRoute ? currentRoute.locations : [startLocation, ...locations],
+        hasRoute ? currentRoute.routePath : null
       );
     }
   }, [startLocation, locations, currentRoute]);
@@ -585,17 +588,26 @@ function App() {
         );
       }
 
+      const legs = Array.isArray(data.legs) ? data.legs : [];
+      // 자동차 실제 도로 좌표열을 leg 순서대로 이어붙인다([[lat,lng],...]).
+      // 도보/대중교통은 path가 비어 있어 routePath도 빈 배열이 된다(→ 지도에서 직선 폴백).
+      const routePath = legs.flatMap((l) => (Array.isArray(l.path) ? l.path : []));
+
       return {
         locations: orderedList,
         distance: Number(data.total_distance_km || 0),
         duration: Number(data.total_duration_min || 0),
-        legs: Array.isArray(data.legs) ? data.legs : [],
+        legs,
+        routePath,
         estimated: Boolean(data.estimated),
         travelMode: mode,
         // 출발 시각을 입력했을 때만 채워지는 시간축 정보.
         startTimeUsed: data.start_time || null,
         finishTime: data.finish_time || null,
         totalElapsedMin: data.total_elapsed_min ?? null,
+        // 출발시각 미입력(③)인데 약속이 있어 백엔드가 역산한 '추천 출발시각'.
+        recommendedStartTime: data.recommended_start_time || null,
+        recommendedFeasible: data.recommended_feasible ?? null,
         stops: Array.isArray(data.stops) ? data.stops : null,
         appointmentViolations: Array.isArray(data.appointment_violations)
           ? data.appointment_violations
@@ -796,9 +808,14 @@ function App() {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  // 최적화/도착시각 계산에 쓸 출발 시각: 사용자가 고른 값이 있으면 그 값,
-  // 없으면 현재 PC 시각을 기준으로 삼는다(요청 시점 기준으로 도착 시각/약속 준수 계산).
-  const effectiveStartTime = () => startTime || currentHHMM();
+  // 백엔드에 보낼 출발 시각을 결정한다.
+  // ① '현재 시간 기준' 체크 -> 현재 PC 시각
+  // ② 미체크 + 출발시각 드롭다운 선택 -> 그 시각
+  // ③ 미체크 + 미선택 -> null (도착시각/지각 계산 안 함. 단 약속시각 순서는 백엔드가 지켜줌)
+  const effectiveStartTime = () => {
+    if (useCurrentTime) return currentHHMM();
+    return startTime || null;
+  };
 
   const updateStartTimePart = (part, value) => {
     const next = {
@@ -820,6 +837,18 @@ function App() {
     setStartMinute('');
     setStartTime('');
     invalidateAllRoutes();
+  };
+
+  // 역산으로 추천된 출발 시각("HH:MM")을 실제 출발시각 드롭다운에 채워 확정한다(③ -> ②).
+  const applyRecommendedStartTime = (hhmm) => {
+    const parts = apptPartsFromHHMM(hhmm); // {appt_meridiem, appt_hour, appt_minute}
+    if (!parts.appt_hour) return;
+    setUseCurrentTime(false);
+    setStartMeridiem(parts.appt_meridiem);
+    setStartHour(parts.appt_hour);
+    setStartMinute(parts.appt_minute);
+    setStartTime(hhmm);
+    invalidateAllRoutes(); // 새 출발시각으로 다시 계산하도록 캐시 비움
   };
 
   const updateDuration = (index, value) => {
@@ -882,7 +911,7 @@ function App() {
   // -------------------------------
   // 지도
   // -------------------------------
-  const drawMapElements = (locs) => {
+  const drawMapElements = (locs, routePath = null) => {
     if (!mapInstance.current || !window.kakao?.maps) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
@@ -918,9 +947,21 @@ function App() {
       bounds.extend(position);
     });
 
-    if (linePath.length > 1) {
+    // 자동차 실제 도로 좌표열(routePath)이 있으면 그걸 따라 그리고,
+    // 없으면(도보/대중교통·경로 미계산) 지점 간 직선으로 폴백한다.
+    const hasRealPath = Array.isArray(routePath) && routePath.length > 1;
+    const drawPath = hasRealPath
+      ? routePath
+          .filter(
+            (p) =>
+              Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])
+          )
+          .map(([lat, lng]) => new window.kakao.maps.LatLng(lat, lng))
+      : linePath;
+
+    if (drawPath.length > 1) {
       polylineInstance.current = new window.kakao.maps.Polyline({
-        path: linePath,
+        path: drawPath,
         strokeWeight: 5,
         strokeColor: '#635BFF',
         strokeOpacity: 0.8,
@@ -1087,7 +1128,8 @@ function App() {
                   <select
                     value={startMeridiem}
                     onChange={(e) => updateStartTimePart('meridiem', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">오전/오후</option>
                     <option value="오전">오전</option>
@@ -1096,7 +1138,8 @@ function App() {
                   <select
                     value={startHour}
                     onChange={(e) => updateStartTimePart('hour', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">시</option>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
@@ -1106,7 +1149,8 @@ function App() {
                   <select
                     value={startMinute}
                     onChange={(e) => updateStartTimePart('minute', e.target.value)}
-                    style={styles.timeSelect}
+                    disabled={useCurrentTime}
+                    style={{ ...styles.timeSelect, opacity: useCurrentTime ? 0.45 : 1 }}
                   >
                     <option value="">분</option>
                     {Array.from({ length: 60 }, (_, i) => i).map((m) => (
@@ -1114,7 +1158,7 @@ function App() {
                     ))}
                   </select>
                 </div>
-                {startTime && (
+                {!useCurrentTime && startTime && (
                   <button
                     type="button"
                     onClick={clearStartTime}
@@ -1124,10 +1168,25 @@ function App() {
                   </button>
                 )}
               </div>
+
+              <label style={styles.currentTimeCheck}>
+                <input
+                  type="checkbox"
+                  checked={useCurrentTime}
+                  onChange={(e) => {
+                    setUseCurrentTime(e.target.checked);
+                    invalidateAllRoutes();
+                  }}
+                />
+                <span>현재 시간을 기준으로 계산하기</span>
+              </label>
+
               <div style={styles.startTimeHint}>
-                입력하면 약속 시각을 지키도록 경로를 짜고 도착 시각까지 계산합니다. (선택)
-                <br />
-                예정 시각을 선택하지 않으면 현재 시간을 기준으로 반영합니다.
+                {useCurrentTime
+                  ? '지금 출발한다고 보고 도착 시각·약속 준수를 계산합니다.'
+                  : startTime
+                  ? '선택한 출발 시각을 기준으로 도착 시각·약속 준수를 계산합니다.'
+                  : '출발 시각을 정하지 않아 도착 시각은 계산하지 않습니다. (약속 시각을 넣으면 그 순서는 지켜집니다)'}
               </div>
 
               <button
@@ -1371,11 +1430,31 @@ function App() {
                 {currentRoute.finishTime && (
                   <div style={styles.scheduleSummary}>
                     <span style={styles.scheduleSummaryText}>
-                      🕒 {currentRoute.startTimeUsed} 출발 → {currentRoute.finishTime} 종료
+                      {currentRoute.recommendedStartTime ? (
+                        <>🕒 추천 출발시각 <strong>{currentRoute.recommendedStartTime}</strong> → {currentRoute.finishTime} 종료</>
+                      ) : (
+                        <>🕒 {currentRoute.startTimeUsed} 출발 → {currentRoute.finishTime} 종료</>
+                      )}
                       {currentRoute.totalElapsedMin != null && (
                         <> · 총 {formatDuration(currentRoute.totalElapsedMin)}(대기·체류 포함)</>
                       )}
                     </span>
+                    {currentRoute.recommendedStartTime && (
+                      <div style={styles.recommendRow}>
+                        <span style={styles.recommendHint}>
+                          {currentRoute.recommendedFeasible === false
+                            ? '약속을 모두 지킬 수는 없어요. 위반을 최소로 하는 가장 늦은 출발 시각입니다.'
+                            : '약속에 늦지 않게 도착하는 가장 늦은 출발 시각이에요.'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => applyRecommendedStartTime(currentRoute.recommendedStartTime)}
+                          style={styles.recommendApplyBtn}
+                        >
+                          이 시각으로 설정
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2207,6 +2286,16 @@ const styles = {
     padding: 2,
   },
 
+  currentTimeCheck: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    color: '#4b5563',
+    marginTop: 8,
+    cursor: 'pointer',
+  },
+
   startTimeHint: {
     fontSize: 10,
     color: '#98a2b3',
@@ -2301,6 +2390,35 @@ const styles = {
     fontSize: 12,
     color: '#cfd6e4',
     lineHeight: 1.5,
+  },
+
+  recommendRow: {
+    marginTop: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+
+  recommendHint: {
+    fontSize: 11,
+    color: '#9aa4b8',
+    lineHeight: 1.4,
+    flex: 1,
+    minWidth: 0,
+  },
+
+  recommendApplyBtn: {
+    flexShrink: 0,
+    border: '1px solid #635BFF',
+    background: 'rgba(99, 91, 255, 0.15)',
+    color: '#c3bdff',
+    fontSize: 11,
+    fontWeight: 600,
+    borderRadius: 7,
+    padding: '5px 10px',
+    cursor: 'pointer',
   },
 
   violationNotice: {
