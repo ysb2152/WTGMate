@@ -342,10 +342,10 @@ function App() {
 
   useEffect(() => {
     if (mapInstance.current) {
+      const hasRoute = currentRoute.locations?.length;
       drawMapElements(
-        currentRoute.locations?.length
-          ? currentRoute.locations
-          : [startLocation, ...locations]
+        hasRoute ? currentRoute.locations : [startLocation, ...locations],
+        hasRoute ? currentRoute.routePath : null
       );
     }
   }, [startLocation, locations, currentRoute]);
@@ -585,11 +585,17 @@ function App() {
         );
       }
 
+      const legs = Array.isArray(data.legs) ? data.legs : [];
+      // 자동차 실제 도로 좌표열을 leg 순서대로 이어붙인다([[lat,lng],...]).
+      // 도보/대중교통은 path가 비어 있어 routePath도 빈 배열이 된다(→ 지도에서 직선 폴백).
+      const routePath = legs.flatMap((l) => (Array.isArray(l.path) ? l.path : []));
+
       return {
         locations: orderedList,
         distance: Number(data.total_distance_km || 0),
         duration: Number(data.total_duration_min || 0),
-        legs: Array.isArray(data.legs) ? data.legs : [],
+        legs,
+        routePath,
         estimated: Boolean(data.estimated),
         travelMode: mode,
         // 출발 시각을 입력했을 때만 채워지는 시간축 정보.
@@ -882,7 +888,7 @@ function App() {
   // -------------------------------
   // 지도
   // -------------------------------
-  const drawMapElements = (locs) => {
+  const drawMapElements = (locs, routePath = null) => {
     if (!mapInstance.current || !window.kakao?.maps) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
@@ -918,9 +924,21 @@ function App() {
       bounds.extend(position);
     });
 
-    if (linePath.length > 1) {
+    // 자동차 실제 도로 좌표열(routePath)이 있으면 그걸 따라 그리고,
+    // 없으면(도보/대중교통·경로 미계산) 지점 간 직선으로 폴백한다.
+    const hasRealPath = Array.isArray(routePath) && routePath.length > 1;
+    const drawPath = hasRealPath
+      ? routePath
+          .filter(
+            (p) =>
+              Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])
+          )
+          .map(([lat, lng]) => new window.kakao.maps.LatLng(lat, lng))
+      : linePath;
+
+    if (drawPath.length > 1) {
       polylineInstance.current = new window.kakao.maps.Polyline({
-        path: linePath,
+        path: drawPath,
         strokeWeight: 5,
         strokeColor: '#635BFF',
         strokeOpacity: 0.8,

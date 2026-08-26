@@ -400,8 +400,21 @@ def mock_data():
 # 2. 실제 이동시간 조회
 # =========================================================
 
-async def get_car_leg(origin: LocationItem, dest: LocationItem, client: httpx.AsyncClient):
-    """Kakao Mobility 자동차 길찾기. 반환: duration seconds, distance meters"""
+def extract_car_path(route: dict) -> List[List[float]]:
+    """Kakao Mobility 응답의 도로 좌표열을 [[lat, lng], ...] 로 펼친다.
+    vertexes는 [x1, y1, x2, y2, ...] (x=lng, y=lat) 평면 배열이라 2개씩 끊어 뒤집는다."""
+    path: List[List[float]] = []
+    for section in route.get("sections", []):
+        for road in section.get("roads", []):
+            vs = road.get("vertexes", []) or []
+            for k in range(0, len(vs) - 1, 2):
+                path.append([vs[k + 1], vs[k]])  # [lat, lng]
+    return path
+
+
+async def get_car_leg(origin: LocationItem, dest: LocationItem, client: httpx.AsyncClient, include_path: bool = False):
+    """Kakao Mobility 자동차 길찾기. 반환: (duration sec, distance m, path[[lat,lng]...]).
+    include_path=False면 path는 빈 리스트(행렬 계산 등 좌표열이 불필요한 경우 파싱 생략)."""
     if not KAKAO_REST_API_KEY:
         raise RuntimeError("KAKAO_REST_API_KEY가 없습니다.")
 
@@ -420,8 +433,10 @@ async def get_car_leg(origin: LocationItem, dest: LocationItem, client: httpx.As
     if not data.get("routes"):
         raise RuntimeError("Kakao 경로 결과가 없습니다.")
 
-    summary = data["routes"][0]["summary"]
-    return float(summary["duration"]), float(summary["distance"])
+    route0 = data["routes"][0]
+    summary = route0["summary"]
+    path = extract_car_path(route0) if include_path else []
+    return float(summary["duration"]), float(summary["distance"]), path
 
 
 def fallback_leg(origin: LocationItem, dest: LocationItem, mode: str):
@@ -442,13 +457,15 @@ def fallback_leg(origin: LocationItem, dest: LocationItem, mode: str):
     if mode == "transit":
         duration_sec += 5 * 60
 
-    return duration_sec, distance_m
+    # 폴백(도보/대중교통/자동차 API 실패)은 실제 도로 좌표열이 없으므로 path는 빈 리스트.
+    return duration_sec, distance_m, []
 
 
-async def get_leg_duration(origin: LocationItem, dest: LocationItem, mode: str, client: httpx.AsyncClient):
+async def get_leg_duration(origin: LocationItem, dest: LocationItem, mode: str, client: httpx.AsyncClient, include_path: bool = False):
+    """반환: (duration sec, distance m, path). path는 자동차 실경로가 있을 때만 채워진다."""
     if mode == "car" and KAKAO_REST_API_KEY:
         try:
-            return await get_car_leg(origin, dest, client)
+            return await get_car_leg(origin, dest, client, include_path=include_path)
         except Exception as e:
             print(f"Kakao 자동차 API 실패: {origin.name} -> {dest.name}: {e}")
 
@@ -467,7 +484,7 @@ async def build_time_distance_matrix(locations: List[LocationItem], travel_mode:
             for j in range(n):
                 if i == j:
                     continue
-                duration, distance = await get_leg_duration(locations[i], locations[j], travel_mode, client)
+                duration, distance, _ = await get_leg_duration(locations[i], locations[j], travel_mode, client)
                 time_matrix[i][j] = max(1, int(round(duration)))
                 distance_matrix[i][j] = max(1, int(round(distance)))
 
@@ -720,7 +737,10 @@ async def calculate_route_eta(req: RouteDetailRequest):
     async with httpx.AsyncClient() as client:
         for i in range(len(locs) - 1):
             origin, dest = locs[i], locs[i + 1]
-            duration, distance = await get_leg_duration(origin, dest, req.travel_mode, client)
+            # 최종 경로이므로 자동차 실제 도로 좌표열(path)까지 받아 지도에 그리게 한다.
+            duration, distance, path = await get_leg_duration(
+                origin, dest, req.travel_mode, client, include_path=True
+            )
             total_duration += duration
             total_distance += distance
             legs.append({
@@ -728,6 +748,8 @@ async def calculate_route_eta(req: RouteDetailRequest):
                 "to": dest.name,
                 "duration_min": round(duration / 60, 1),
                 "distance_km": round(distance / 1000, 2),
+                # 자동차 실경로가 있으면 [[lat,lng],...], 도보/대중교통(폴백)이면 빈 리스트.
+                "path": path,
             })
 
             arrival = None
