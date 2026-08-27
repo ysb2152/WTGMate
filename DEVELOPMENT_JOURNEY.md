@@ -15,6 +15,7 @@
 
 | 시점 | 구분 | 한 일 | 관련 |
 |---|---|---|---|
+| 2026-08-27 | chore | AWS 배포 산출물 완비(EC2에 올리면 바로 기동): backend Dockerfile + docker-compose(ollama+model-loader+backend) + nginx + Modelfile 커밋, GitHub Actions로 Docker 이미지 빌드 CI 추가, DEPLOY.md 구체 런북화 | `chore/deploy-artifacts` / `DEPLOY.md` |
 | 2026-08-27 | chore | 배포 Phase 1(코드 준비): requirements.txt 생성, 프론트 API주소·백엔드 CORS를 env화, .env.example 2종 추가 | `chore/deploy-phase1` / `DEPLOY.md` |
 | 2026-08-27 | fix | 실사용 브라우저 검증 중 발견: Kakao 자동차 API가 실패해도 200으로 result_code만 주는 짧은 구간에서 `summary` KeyError → result_code 확인해 명확히 폴백 | `fix/kakao-car-resultcode` |
 | 2026-08-27 | perf/test | 배포용 정확도·성능 측정(최적화 최적성 PASS·LLM 추출 6/6·추정행렬 regret 평균 0.5분) 후 OR-Tools time_limit 5s→2s, 검증 하네스 경로 하드코딩 제거 | `chore/perf-timelimit-harness` |

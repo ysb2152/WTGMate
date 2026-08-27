@@ -1,0 +1,59 @@
+# WTGMate 백엔드 + Ollama 오케스트레이션 (단일 EC2 등에서 `docker compose up -d --build`).
+#
+# 준비물:
+#   1) 파인튜닝 GGUF와 Modelfile을 ./model/ 에 둔다:
+#        ./model/wtgmate-parser.gguf        (git 제외 ~1.9GB, S3에서 내려받거나 Colab로 생성)
+#        ./model/Modelfile                  (backend/finetune/Modelfile 복사)
+#   2) 루트 .env 또는 셸 환경변수로 키 주입:
+#        KAKAO_REST_API_KEY / TMAP_APP_KEY / ODSAY_API_KEY / ALLOWED_ORIGINS
+#   3) docker compose up -d --build
+#   4) 헬스체크: curl http://localhost:8000/api/health
+#
+# 정적 프론트 서빙 + HTTPS는 호스트 nginx + certbot으로 처리한다(deploy/nginx-wtgmate.conf).
+
+services:
+  # Ollama 서버(로컬 파인튜닝 모델 구동). CPU만으로도 3B 동작.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+
+  # ollama가 뜨면 모델을 한 번 등록하고 종료하는 1회성 서비스.
+  model-loader:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    volumes:
+      - ./model:/model:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until ollama list >/dev/null 2>&1; do echo 'waiting for ollama...'; sleep 2; done;
+        ollama create wtgmate-parser -f /model/Modelfile &&
+        echo 'wtgmate-parser 등록 완료'
+    restart: "no"
+
+  # FastAPI 백엔드.
+  backend:
+    build: ./backend
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=wtgmate-parser
+      - KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY:-}
+      - TMAP_APP_KEY=${TMAP_APP_KEY:-}
+      - ODSAY_API_KEY=${ODSAY_API_KEY:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
