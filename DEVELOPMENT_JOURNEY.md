@@ -15,6 +15,7 @@
 
 | 시점 | 구분 | 한 일 | 관련 |
 |---|---|---|---|
+| 2026-08-27 | fix | 실사용 브라우저 검증 중 발견: Kakao 자동차 API가 실패해도 200으로 result_code만 주는 짧은 구간에서 `summary` KeyError → result_code 확인해 명확히 폴백 | `fix/kakao-car-resultcode` |
 | 2026-08-27 | perf/test | 배포용 정확도·성능 측정(최적화 최적성 PASS·LLM 추출 6/6·추정행렬 regret 평균 0.5분) 후 OR-Tools time_limit 5s→2s, 검증 하네스 경로 하드코딩 제거 | `chore/perf-timelimit-harness` |
 | 2026-08-27 | chore | 배포 전 전체 점검 후 정리: 죽은 코드·미사용 import 제거, 낡은 주석(도보/대중교통 실경로) 현행화, eslint 설정 보완 | `chore/cleanup` |
 | 2026-08-27 | feat | 대중교통 실제 경로(ODsay `searchPubTransPathT`) 연동 — 실제 시간·거리·정류장 경로, 키 없으면 추정 폴백 | `feature/transit-real-route` |

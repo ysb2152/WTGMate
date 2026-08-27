@@ -500,6 +500,14 @@ async def get_car_leg(origin: LocationItem, dest: LocationItem, client: httpx.As
         raise RuntimeError("Kakao 경로 결과가 없습니다.")
 
     route0 = data["routes"][0]
+    # Kakao Mobility는 길찾기에 실패해도 200으로 routes[0]에 result_code/result_msg만 담아
+    # 보낸다(예: code 104 출발·도착이 너무 가까움). 이때 summary가 없어 예전엔 KeyError('summary')로
+    # 터졌다. result_code(0=성공)를 먼저 확인해, 실패면 사유를 담아 명확히 실패시킨다
+    # (→ get_leg_duration이 추정치로 폴백. 아주 짧은 구간이라 추정으로 충분하다).
+    result_code = route0.get("result_code", 0)
+    if result_code != 0 or "summary" not in route0:
+        raise RuntimeError(f"Kakao 경로 실패(code {result_code}): {route0.get('result_msg', 'summary 없음')}")
+
     summary = route0["summary"]
     path = extract_car_path(route0) if include_path else []
     return float(summary["duration"]), float(summary["distance"]), path
