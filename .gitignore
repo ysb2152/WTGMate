@@ -29,6 +29,9 @@ lerna-debug.log*
 *.safetensors
 *.bin
 
+# 파인튜닝 학습데이터 로컬 백업(레거시). 재생성 가능하므로 커밋 제외.
+backend/finetune/data/legacy_no_appt/
+
 # Claude Code: launch.json은 절대경로가 박혀 있어 로컬 전용(커밋 금지).
 .claude/launch.json
 
