@@ -15,6 +15,7 @@
 
 | 시점 | 구분 | 한 일 | 관련 |
 |---|---|---|---|
+| 2026-08-27 | deploy | **실제 라이브 배포 성공** — https://wtg-mate.vercel.app (Vercel 프론트 + Cloudflare Tunnel로 개발 PC의 백엔드/Ollama 노출). 지도·추출·약속·지오코딩·경로 라이브 확인 | B-11 |
 | 2026-08-27 | deploy | 실제 라이브 데모를 Cloudflare Tunnel+Vercel(비용 0)로 결정·검증(quick tunnel로 백엔드 HTTPS 노출·/api/health 200). 런북·실행 스크립트 추가 | `deploy/CLOUDFLARE.md` |
 | 2026-08-27 | chore | AWS 배포 산출물 완비(EC2에 올리면 바로 기동): backend Dockerfile + docker-compose(ollama+model-loader+backend) + nginx + Modelfile 커밋, GitHub Actions로 Docker 이미지 빌드 CI 추가, DEPLOY.md 구체 런북화 | `chore/deploy-artifacts` / `DEPLOY.md` |
 | 2026-08-27 | chore | 배포 Phase 1(코드 준비): requirements.txt 생성, 프론트 API주소·백엔드 CORS를 env화, .env.example 2종 추가 | `chore/deploy-phase1` / `DEPLOY.md` |
@@ -357,6 +358,39 @@ input에 시각이 있는데 라벨이 없어 그대로 쓰면 "시각을 무시
 **남은 것 · 한계.** ODsay 무료는 **30회/일**이라 개인 데모용이다. 공개 라이브 데모는 유료 플랜이거나 대중교통을
 추정으로 두는 선택이 필요하다. 배포 시 `ODSAY_API_KEY`는 서버 환경변수로 주입하고, 서버 공인 IP를 ODsay에 등록해야 한다.
 
+## B-11. 배포 — AWS "준비 완료"와 Cloudflare Tunnel 라이브의 분리  · 🔴 라이브: https://wtg-mate.vercel.app
+
+**고민.** 포트폴리오를 실제 접속 가능한 URL로 올리고 싶은데, 이 앱의 백엔드는 **로컬 파인튜닝 3B 모델(Ollama)** 을
+쓴다. 이게 RAM 2~3GB를 요구해, 무료/저가 호스팅에는 안 들어가고 AWS로 가면 t3.medium 상시 가동 **월 ~$30** 이다.
+
+**선택 1 — AWS는 "올리면 바로 뜨는" 상태로 완비만 한다.** 실제 과금 운영 대신, 배포 산출물을 전부 갖춰
+"프로비저닝만 하면 기동"인 상태로 만들었다. `backend/Dockerfile` + `docker-compose.yml`(ollama +
+`model-loader`(부팅 시 `ollama create` 자동) + backend 3서비스) + `deploy/nginx-wtgmate.conf`(정적 프론트 +
+`/api` 프록시 + certbot) + 로컬 Ollama에서 복구한 `backend/finetune/Modelfile`. 나아가 **GitHub Actions로 백엔드
+이미지를 실제 빌드**(`docker-build` 워크플로)해 "언제나 빌드 가능"을 CI로 보증했다(레포에 초록 체크).
+
+**선택 2 — 실제 라이브는 비용 0의 Cloudflare Tunnel + Vercel.** 핵심 통찰: **백엔드/Ollama가 이미 개발 PC에서
+잘 돌고, 모든 API 키(Kakao·Tmap·ODsay)가 그 PC의 IP로 이미 인증**된다. 그래서 EC2에 모델을 옮기는 대신,
+개발 PC의 FastAPI(:8000)를 **Cloudflare Tunnel**로 HTTPS 노출하고, 정적 프론트만 **Vercel**(무료·HTTPS)에 올렸다.
+```
+브라우저 ─https─▶ Vercel(프론트) ─/api─https─▶ Cloudflare Tunnel ─▶ 개발 PC: FastAPI + Ollama
+```
+배포를 위해 코드도 손봤다(Phase 1): 프론트 API 주소를 `VITE_API_BASE_URL` env로, 백엔드 CORS를 `ALLOWED_ORIGINS`
+env로 빼고(자격증명 미사용이라 `allow_credentials=False`), `requirements.txt`·`.env.example`을 추가했다.
+
+**왜 이 분리가 맞나.** "AWS 배포를 설계·완비할 수 있다"는 역량 증명(산출물+Docker CI)과 "실제로 접속되는 데모"를
+**둘 다** 얻으면서, 상시 과금은 피했다. 트레이드오프는 명확하다 — Cloudflare quick tunnel URL은 재시작마다 바뀌고,
+데모는 PC를 켜둔 동안만 라이브다(면접 전 `deploy/run-demo.ps1` 실행).
+
+**어려웠던 점 · Kakao "JavaScript SDK 도메인" 함정.** Vercel 배포 후 프론트·API는 다 되는데 **지도만 404**로 안
+떴다. 키는 로컬과 동일(정상), 백엔드 파싱·지오코딩도 라이브로 동작하는데 지도만 죽었다. 원인은 Kakao 콘솔에서
+**일반 "Web 플랫폼 사이트 도메인"과 별개로 "JavaScript SDK 도메인"을 따로** 등록해야 한다는 점(둘이 다른 설정).
+후자에 `https://wtg-mate.vercel.app`을 넣으니 해결됐다. 또 Vercel은 `VITE_` 접두 변수를 Secret으로 저장하려다
+막는데, 이 값들은 원래 브라우저 공개(도메인으로 보호)라 **Config 타입**으로 저장해야 빌드에 주입된다.
+
+**검증.** 라이브 사이트에서 자연어 일정 → 장소 4개 추출(약속시각 포함) → 지도 렌더·마커·경로, Kakao 후보검색까지
+전 과정 동작 확인. 백엔드 3키(kakao/tmap/odsay) 모두 `configured`.
+
 ---
 
 # Part C. 배운 것 · 면접 스토리 · 로드맵
@@ -386,6 +420,7 @@ input에 시각이 있는데 라벨이 없어 그대로 쓰면 "시각을 무시
 - [x] **대중교통 실제 경로 API**(ODsay) 연동 — **완료(B-10)** / 무료 30회/일이라 개인 데모용, 공개 배포는 유료/추정 선택 필요
 - [ ] 경로별 총시간·총거리·우선순위 만족도 동시 표시, 지도 구간 정보 강화
 - [x] 성능·쿼터: 실 API 호출 O(n²)→n-1 축소 + leg 캐시(LRU·TTL) — **완료(B-9)** / 병렬화는 향후
+- [x] **배포**: AWS 산출물+Docker CI 완비 + **실제 라이브(Cloudflare Tunnel+Vercel)** — **완료(B-11)**, https://wtg-mate.vercel.app
 - [~] 테스트: 순수 헬퍼(clamp_priority·importance_score·haversine) 유닛테스트 12개 추가(**진행 중**, `backend/tests/test_helpers.py`). 여기서 `clamp_priority(0)`이 `value or 3` 때문에 3이 되던 버그도 발견·수정(출발지 priority=0에 영향). 향후 우선순위 역전·API 실패·후보 변경 등 케이스로 확대.
 
 ---
