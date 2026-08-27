@@ -888,7 +888,9 @@ def solve_with_ortools(stop_indices: List[int], time_matrix: List[List[int]], co
     parameters = pywrapcp.DefaultRoutingSearchParameters()
     parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    parameters.time_limit.seconds = 5
+    # 장소가 많을 때(n>=10)만 도달. 응답 지연을 줄이려 2초로 제한한다.
+    # (이 규모에선 2초와 5초 해의 품질 차이가 미미하다.)
+    parameters.time_limit.seconds = 2
 
     solution = routing.SolveWithParameters(parameters)
     if solution is None:

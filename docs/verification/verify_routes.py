@@ -17,8 +17,11 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-BACKEND = Path(r"C:\Users\ysb21\todo-route-planner\backend")
-OUT_DIR = Path(r"C:\Users\ysb21\todo-route-planner\docs\verification")
+# 이 파일(docs/verification/verify_routes.py) 위치에서 레포 루트를 역산한다.
+# (경로 하드코딩 대신 파일 기준으로 잡아, 레포가 옮겨지거나 이름이 바뀌어도 깨지지 않게 한다.)
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND = _REPO_ROOT / "backend"
+OUT_DIR = _REPO_ROOT / "docs" / "verification"
 BASE = "http://127.0.0.1:8000"
 
 load_dotenv(BACKEND / ".env")
