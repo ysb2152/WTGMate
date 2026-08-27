@@ -32,15 +32,20 @@ ALB(월 ~$16)와 API Gateway(요청 29초 하드 리밋)를 모두 피하기 위
 
 ---
 
-## Phase 1 — 배포 전 코드 정리
+## Phase 1 — 배포 전 코드 정리  ✅ 대부분 완료(2026-08-27)
 
-| 항목 | 현재 | 바꿀 것 | 위치 |
+| 항목 | 상태 | 내용 | 위치 |
 |---|---|---|---|
-| 프론트 API 주소 | `http://127.0.0.1:8000` 하드코딩 | `VITE_API_BASE_URL` 환경변수 (fallback 유지) | `frontend/src/App.jsx` |
-| CORS | `allow_origins=["*"]` | 배포 도메인만 허용 (env로 주입) | `backend/main.py` |
-| Ollama 호스트 | `OLLAMA_HOST` env ✅ | 이미 됨 | `backend/main.py` |
-| 의존성 고정 | 없음 | `backend/requirements.txt` 생성 | - |
-| 컨테이너화 | 없음 | `Dockerfile` + `docker-compose.yml` (backend + ollama) | - |
+| 프론트 API 주소 | ✅ | `VITE_API_BASE_URL` env로 주입, 미설정 시 로컬 폴백. 빈 문자열("")이면 `/api` 상대경로(nginx 동일 오리진용) | `frontend/src/App.jsx:3` |
+| CORS | ✅ | `ALLOWED_ORIGINS` env(콤마 구분), 미설정 시 `*`. 자격증명 미사용이라 `allow_credentials=False` | `backend/main.py` |
+| Ollama 호스트 | ✅ | `OLLAMA_HOST`/`OLLAMA_MODEL` env | `backend/main.py` |
+| 의존성 고정 | ✅ | `backend/requirements.txt` 생성(fastapi·uvicorn[standard]·httpx·python-dotenv·pydantic·ortools) | `backend/requirements.txt` |
+| env 템플릿 | ✅ | `backend/.env.example`, `frontend/.env.example` 추가 | - |
+| 컨테이너화 | ⬜ | (선택) `Dockerfile` + `docker-compose.yml`. bare-metal(venv+systemd)로도 가능 | - |
+
+**배포 시 주입할 env 요약**
+- 백엔드: `KAKAO_REST_API_KEY`, `TMAP_APP_KEY`, `ODSAY_API_KEY`, `ALLOWED_ORIGINS`(배포 도메인), `OLLAMA_HOST`/`OLLAMA_MODEL`
+- 프론트(빌드 시점): `VITE_KAKAO_JAVASCRIPT_KEY`, `VITE_API_BASE_URL`(nginx 동일 오리진이면 "")
 
 ## Phase 2 — 모델(GGUF) 전달
 
