@@ -41,7 +41,11 @@ ALB(월 ~$16)와 API Gateway(요청 29초 하드 리밋)를 모두 피하기 위
 | Ollama 호스트 | ✅ | `OLLAMA_HOST`/`OLLAMA_MODEL` env | `backend/main.py` |
 | 의존성 고정 | ✅ | `backend/requirements.txt` 생성(fastapi·uvicorn[standard]·httpx·python-dotenv·pydantic·ortools) | `backend/requirements.txt` |
 | env 템플릿 | ✅ | `backend/.env.example`, `frontend/.env.example` 추가 | - |
-| 컨테이너화 | ⬜ | (선택) `Dockerfile` + `docker-compose.yml`. bare-metal(venv+systemd)로도 가능 | - |
+| 컨테이너화 | ✅ | `backend/Dockerfile`(+`.dockerignore`), 루트 `docker-compose.yml`(ollama + model-loader + backend) | - |
+| 모델 등록 | ✅ | `backend/finetune/Modelfile`(raw passthrough) 커밋 → `ollama create`로 재현 | - |
+| nginx | ✅ | `deploy/nginx-wtgmate.conf`(정적 프론트 + /api 프록시, certbot용) | - |
+
+**→ 배포 산출물이 모두 준비됨. EC2에 올려 아래 "배포 순서 요약"만 실행하면 기동된다.**
 
 **배포 시 주입할 env 요약**
 - 백엔드: `KAKAO_REST_API_KEY`, `TMAP_APP_KEY`, `ODSAY_API_KEY`, `ALLOWED_ORIGINS`(배포 도메인), `OLLAMA_HOST`/`OLLAMA_MODEL`
@@ -75,12 +79,52 @@ ALB(월 ~$16)와 API Gateway(요청 29초 하드 리밋)를 모두 피하기 위
 
 ---
 
-## 배포 순서 요약
+## 배포 순서 요약 (산출물 준비 완료 → EC2에서 실행만)
 
-1. Phase 1 코드 정리 (로컬에서 완료 가능)
-2. GGUF S3 업로드
-3. EC2(t3.medium) 프로비저닝 + 보안 그룹(80/443) 설정
-4. Docker/의존성 설치 → backend + Ollama 기동 → `ollama create`
-5. nginx 설정(정적 서빙 + /api 프록시) + certbot HTTPS
-6. 도메인 연결 + Kakao 콘솔에 도메인 등록
-7. 헬스체크(`/api/health`)로 확인
+**로컬(완료됨):** Phase 1 코드 정리 + Dockerfile/compose/nginx/Modelfile 산출물. GGUF는 Colab 노트북으로 생성.
+
+**EC2(Ubuntu, t3.medium+)에서:**
+```bash
+# 0) 도구
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin nginx certbot python3-certbot-nginx
+sudo usermod -aG docker $USER   # 재로그인
+
+# 1) 코드 + 모델
+git clone https://github.com/ysb2152/WTGMate.git && cd WTGMate
+mkdir -p model
+aws s3 cp s3://<버킷>/wtgmate-parser.gguf model/wtgmate-parser.gguf   # GGUF 전달(S3)
+cp backend/finetune/Modelfile model/Modelfile
+
+# 2) 키 주입(.env 또는 SSM). ALLOWED_ORIGINS는 배포 도메인.
+cat > .env <<EOF
+KAKAO_REST_API_KEY=...
+TMAP_APP_KEY=...
+ODSAY_API_KEY=...
+ALLOWED_ORIGINS=https://YOUR_DOMAIN
+EOF
+
+# 3) 백엔드 + Ollama 기동(모델 자동 등록) → 헬스체크
+docker compose up -d --build
+curl http://localhost:8000/api/health          # 3개 키 configured 확인
+
+# 4) 프론트 빌드 → nginx 정적 서빙
+cd frontend && VITE_API_BASE_URL="" VITE_KAKAO_JAVASCRIPT_KEY=... npm ci && npm run build
+sudo mkdir -p /var/www/wtgmate && sudo cp -r dist/* /var/www/wtgmate/ && cd ..
+sudo cp deploy/nginx-wtgmate.conf /etc/nginx/sites-available/wtgmate
+sudo sed -i 's/YOUR_DOMAIN/실제도메인/' /etc/nginx/sites-available/wtgmate
+sudo ln -sf /etc/nginx/sites-available/wtgmate /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# 5) HTTPS
+sudo certbot --nginx -d YOUR_DOMAIN
+```
+
+**콘솔 작업:** 보안그룹 80/443 오픈, Elastic IP + 도메인 A레코드, **Kakao JS 키 플랫폼에 배포 도메인 등록**, **ODsay '서버' 앱에 EC2 공인 IP 등록**.
+
+---
+
+## 실제 라이브 데모는 Cloudflare Tunnel로 운영 (비용 절감)
+
+위 AWS 구성은 **배포 즉시 가능한 상태로 완비**해 두었으나(t3.medium 상시 ~$30/월), 포트폴리오 데모는
+비용 0의 **Cloudflare Tunnel + Vercel** 로 운영한다. 백엔드/Ollama는 개발 PC에서 그대로 돌고
+(모든 API 키가 이미 그 IP로 동작), Cloudflare Tunnel이 HTTPS로 노출한다. 상세는 `deploy/CLOUDFLARE.md`.

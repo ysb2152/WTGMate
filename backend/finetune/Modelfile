@@ -1,0 +1,17 @@
+# WTGMate 장소추출 파인튜닝 모델(wtgmate-parser)을 Ollama에 등록하기 위한 Modelfile.
+#
+# 배포 시:
+#   1) 파인튜닝 산출물 GGUF(wtgmate-parser.gguf, ~1.9GB, git 제외)를 이 파일과 같은 폴더에 둔다
+#      (Colab 노트북으로 생성하거나 S3에서 내려받는다 — DEPLOY.md 참고).
+#   2) ollama create wtgmate-parser -f Modelfile
+#
+# TEMPLATE는 채팅 래핑 없이 프롬프트를 그대로 넘기는 raw passthrough다. 학습을 순수 텍스트
+# 이어쓰기(alpaca_prompt) 형식으로 했기 때문에, 추론 때도 동일 형식이어야 성능이 유지된다.
+# (main.py의 call_ollama가 raw=True로 호출하는 것과 짝을 이룬다.)
+
+FROM ./wtgmate-parser.gguf
+TEMPLATE {{ .Prompt }}
+PARAMETER num_ctx 2048
+PARAMETER stop <|im_end|>
+PARAMETER stop <|endoftext|>
+PARAMETER temperature 0.1

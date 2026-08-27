@@ -1,0 +1,38 @@
+# 백엔드 Docker 이미지가 실제로 빌드되는지 CI에서 검증한다.
+# (배포 산출물이 항상 빌드 가능한 상태임을 보장 — 포트폴리오용 "Docker build passing" 근거)
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-backend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: wtgmate-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Validate docker-compose.yml
+        run: docker compose -f docker-compose.yml config >/dev/null && echo "compose config OK"

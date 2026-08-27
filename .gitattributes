@@ -1,0 +1,16 @@
+# Linux(EC2/CI/컨테이너)에서 실행되는 파일은 LF로 고정한다.
+# (Windows에서 편집해도 CRLF가 섞여 sh 스크립트/Dockerfile이 깨지지 않도록)
+Dockerfile      text eol=lf
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.conf          text eol=lf
+Modelfile       text eol=lf
+.dockerignore   text eol=lf
+
+# 바이너리(정규화 제외)
+*.gguf          binary
+*.safetensors   binary
+*.bin           binary
+*.png           binary
+*.jpg           binary

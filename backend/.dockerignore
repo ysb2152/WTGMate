@@ -1,0 +1,14 @@
+# 이미지에 넣지 않을 것들(용량·비밀 제외).
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+tests/
+finetune/data/
+finetune/__pycache__/
+*.gguf
+*.safetensors
+*.bin
