@@ -10,6 +10,8 @@
 > 노출한다(데모 실행 중일 때만 백엔드 기능 동작). 설계·운영 방식은 [DEPLOY.md](DEPLOY.md) ·
 > [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md) 참고.
 
+![WTGMate — 자연어 일정으로 계산한 AI 추천 경로](docs/screenshot.png)
+
 ---
 
 ## 무엇을 푸는가
