@@ -699,6 +699,12 @@ _FINAL_LEG_CACHE_MAX = 512
 _FINAL_LEG_TTL_SEC: Dict[str, int] = {"car": 600, "transit": 600}  # walk 미지정 = 무기한
 
 
+def _now() -> float:
+    """캐시 TTL 판정용 단조 시계. 테스트에서 이 함수만 교체해 시간 경과를 흉내 낸다
+    (time.monotonic을 직접 패치하면 asyncio 이벤트 루프 시계까지 바뀌므로 분리한다)."""
+    return time.monotonic()
+
+
 def _final_leg_key(origin: LocationItem, dest: LocationItem, mode: str) -> Tuple:
     return (mode, round(origin.lat, 6), round(origin.lng, 6), round(dest.lat, 6), round(dest.lng, 6))
 
@@ -714,7 +720,7 @@ async def get_final_leg(origin: LocationItem, dest: LocationItem, mode: str, cli
     entry = _FINAL_LEG_CACHE.get(key)
     if entry is not None:
         expires_at, value = entry
-        if expires_at is None or expires_at > time.monotonic():
+        if expires_at is None or expires_at > _now():
             _FINAL_LEG_CACHE.move_to_end(key)  # LRU: 최근 사용으로 갱신
             return value
         del _FINAL_LEG_CACHE[key]  # 만료 → 제거 후 재조회
@@ -722,7 +728,7 @@ async def get_final_leg(origin: LocationItem, dest: LocationItem, mode: str, cli
     duration, distance, path = await get_leg_duration(origin, dest, mode, client, include_path=True)
     if path:
         ttl = _FINAL_LEG_TTL_SEC.get(mode)
-        expires_at = (time.monotonic() + ttl) if ttl else None
+        expires_at = (_now() + ttl) if ttl else None
         _FINAL_LEG_CACHE[key] = (expires_at, (duration, distance, path))
         _FINAL_LEG_CACHE.move_to_end(key)
         while len(_FINAL_LEG_CACHE) > _FINAL_LEG_CACHE_MAX:
