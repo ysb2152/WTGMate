@@ -1,0 +1,12 @@
+# WTGMate 백엔드 의존성 (로컬 venv에 설치된 버전으로 고정).
+# 배포 서버(EC2, Linux)에서: python -m venv venv && venv/bin/pip install -r requirements.txt
+#
+# 참고: Ollama는 별도 설치(파이썬 패키지 아님). GGUF 모델은 S3 등으로 전달 후
+#       `ollama create wtgmate-parser -f Modelfile`로 등록한다(DEPLOY.md 참고).
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+httpx==0.28.1
+python-dotenv==1.2.3
+pydantic==2.13.4
+ortools==9.12.4544

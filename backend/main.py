@@ -28,8 +28,12 @@ KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
 # 없으면 기존 추정값(fallback_leg)으로 동작한다.
 TMAP_APP_KEY = os.getenv("TMAP_APP_KEY")
 # ODsay 대중교통 길찾기 API 키. 있으면 대중교통을 실제 경로/시간으로 계산하고,
-# 없으면 기존 추정값(fallback_leg)으로 동작한다. (무료 ~1000/일로 Tmap 대중교통 10/일보다 넉넉)
+# 없으면 기존 추정값(fallback_leg)으로 동작한다. (무료 30회/일 — Tmap 대중교통 10/일보다 넉넉하나 여전히 소량)
 ODSAY_API_KEY = os.getenv("ODSAY_API_KEY")
+
+# 허용할 프론트 오리진. 배포 시 ALLOWED_ORIGINS에 도메인을 콤마로 주입한다
+# (예: "https://wtgmate.example.com"). 미설정이면 로컬 개발 편의를 위해 전체 허용("*").
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 
 
 app = FastAPI(title="WTGMate API")
@@ -37,8 +41,10 @@ app = FastAPI(title="WTGMate API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    # 이 앱은 쿠키/자격증명을 쓰지 않는다. allow_origins="*"와 allow_credentials=True 조합은
+    # 브라우저가 거부하므로 False로 둔다(특정 오리진을 넣어도 자격증명이 필요 없어 False 유지).
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

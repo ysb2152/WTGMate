@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// 배포 시 VITE_API_BASE_URL로 주입한다(예: nginx가 같은 도메인에서 /api를 프록시하면 '' = 상대경로).
+// 값이 없으면 로컬 개발용 백엔드로 폴백한다.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000';
 
 const emptyRouteResult = {
   locations: [],
