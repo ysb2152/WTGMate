@@ -15,6 +15,7 @@
 
 | 시점 | 구분 | 한 일 | 관련 |
 |---|---|---|---|
+| 2026-08-27 | deploy | 실제 라이브 데모를 Cloudflare Tunnel+Vercel(비용 0)로 결정·검증(quick tunnel로 백엔드 HTTPS 노출·/api/health 200). 런북·실행 스크립트 추가 | `deploy/CLOUDFLARE.md` |
 | 2026-08-27 | chore | AWS 배포 산출물 완비(EC2에 올리면 바로 기동): backend Dockerfile + docker-compose(ollama+model-loader+backend) + nginx + Modelfile 커밋, GitHub Actions로 Docker 이미지 빌드 CI 추가, DEPLOY.md 구체 런북화 | `chore/deploy-artifacts` / `DEPLOY.md` |
 | 2026-08-27 | chore | 배포 Phase 1(코드 준비): requirements.txt 생성, 프론트 API주소·백엔드 CORS를 env화, .env.example 2종 추가 | `chore/deploy-phase1` / `DEPLOY.md` |
 | 2026-08-27 | fix | 실사용 브라우저 검증 중 발견: Kakao 자동차 API가 실패해도 200으로 result_code만 주는 짧은 구간에서 `summary` KeyError → result_code 확인해 명확히 폴백 | `fix/kakao-car-resultcode` |
