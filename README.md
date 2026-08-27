@@ -1,49 +1,29 @@
-# WTGMate — Smart Route Planner
+# WTGMate
 
-자연어로 적은 하루 일정을 **방문 장소로 추출·검증**하고, **우선순위·약속시각·이동수단**을 반영해
-**경로를 최적화·비교**하고 지도에 **실제 경로**로 그려주는 웹앱.
+Smart Route Planner. 하루 일정을 문장으로 적으면 방문할 장소를 뽑아 확인하고, 우선순위와 약속 시각, 이동수단을 반영해 방문 순서를 정해 주는 웹앱입니다.
 
+[![ci](https://github.com/ysb2152/WTGMate/actions/workflows/ci.yml/badge.svg)](https://github.com/ysb2152/WTGMate/actions/workflows/ci.yml)
 [![docker-build](https://github.com/ysb2152/WTGMate/actions/workflows/docker-build.yml/badge.svg)](https://github.com/ysb2152/WTGMate/actions/workflows/docker-build.yml)
 
-> 🔴 **라이브 데모: https://wtg-mate.vercel.app**
-> 프론트는 Vercel에 상시 배포돼 있고, 백엔드/LLM은 비용 절감을 위해 개발 PC에서 Cloudflare Tunnel로
-> 노출한다(데모 실행 중일 때만 백엔드 기능 동작). 설계·운영 방식은 [DEPLOY.md](DEPLOY.md) ·
-> [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md) 참고.
+라이브 데모: https://wtg-mate.vercel.app
 
-![WTGMate — 자연어 일정으로 계산한 AI 추천 경로](docs/screenshot.png)
+프론트엔드는 Vercel에 올려 두었습니다. 백엔드와 로컬 LLM은 비용을 줄이기 위해 개발용 PC에서 Cloudflare Tunnel로 띄우기 때문에, 데모를 실행 중일 때만 장소 추출과 경로 계산이 동작합니다. 배포 방식은 [DEPLOY.md](DEPLOY.md)와 [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md)에 정리했습니다.
 
----
+![WTGMate 실행 화면](docs/screenshot.png)
 
-## 무엇을 푸는가
+## 만들게 된 이유
 
-- 여러 곳을 들르는 하루 일정에서 **방문 순서를 사람이 직접 고민**해야 하는 불편함
-- "가장 가까운 곳부터"가 항상 좋은 게 아니다 — **일정의 중요도**와 **약속 시각**을 반영해야 한다
-- **AI 추천 / 최단시간 / 내 우선순위** 경로를 나란히 **비교**하고 싶다
+여러 곳을 들르는 하루 일정에서 방문 순서를 매번 직접 고민하는 것이 번거로웠습니다. 가장 가까운 곳부터 도는 방법은 일정의 중요도나 약속 시각을 반영하지 못한다고 생각했습니다. 그래서 일정을 문장으로 입력하면 장소를 뽑아 주고, 중요도와 약속 시각을 함께 고려해 방문 순서를 정해 주는 도구를 만들었습니다.
 
-## 핵심 기능
+## 주요 기능
 
-- **자연어 → 장소 추출**: "오후 2시 광화문에서 회의, 명동에서 점심, 강남역에서 저녁" → 장소·할일·중요도·약속시각 추출
-  - **로컬 파인튜닝 LLM**이 의미를 뽑고, 좌표는 **Kakao Local**로 다시 조회해 검증(모델의 좌표를 믿지 않음)
-- **세 가지 최적화 모드**(각각 목적함수가 실제로 다름)
-  - `최단시간`: 순수 이동시간 최소화
-  - `내 우선순위`: 중요도 그룹 순서를 절대 기준으로 강제(그룹 내에서만 이동시간 최소) — DP로 정확 계산
-  - `AI 추천`: 이동시간 + (중요도 × 방문순번) 페널티 균형
-- **시간 제약 스케줄링**: 약속시각(자동추출)·체류시간 기반 도착시각 계산, 지각 경고, **"몇 시에 나가야 하나" 역산 추천**
-- **실제 경로 표시**(직선이 아닌 실도로/인도/대중교통)
-  - 자동차 = Kakao Mobility · 도보 = Tmap 보행자 · 대중교통 = ODsay
-  - 무료 쿼터가 적어, **순서 최적화는 직선거리 추정으로, 실 API는 확정된 최종 경로에만**(n-1회) 호출 + leg 캐시(LRU·TTL)
+**자연어에서 장소 추출.** "오후 2시 광화문에서 회의, 명동에서 점심, 강남역에서 저녁" 같은 문장에서 장소와 할 일, 중요도, 약속 시각을 뽑아냅니다. 장소의 의미는 로컬에서 파인튜닝한 LLM이 추출하고, 모델이 답한 좌표는 신뢰하지 않고 Kakao Local로 다시 조회해 확인합니다.
 
-## 아키텍처
+**세 가지 최적화 모드.** 최단시간은 이동시간만 최소화합니다. 내 우선순위는 중요한 그룹을 반드시 먼저 방문하고 같은 그룹 안에서만 이동시간을 줄입니다. AI 추천은 이동시간과 우선순위를 함께 반영합니다.
 
-```
-브라우저 ──▶ React + Vite (Kakao Maps JS SDK)
-                 │  /api
-                 ▼
-           FastAPI (Python)
-             ├─ 장소 추출: 로컬 파인튜닝 LLM (Ollama)  → 좌표는 Kakao Local로 검증
-             ├─ 최적화: 완전탐색(≤9곳) / OR-Tools(그 이상)
-             └─ 실제 경로/시간: Kakao Mobility(자동차) · Tmap(도보) · ODsay(대중교통)
-```
+**시간 제약.** 약속 시각과 체류 시간으로 각 장소의 도착 시각을 계산하고 지각을 알립니다. 출발 시각 없이 약속만 입력하면, 약속을 지킬 수 있는 가장 늦은 출발 시각을 역산해 알려 줍니다.
+
+**실제 경로 표시.** 직선이 아니라 실제 도로와 인도, 대중교통 경로로 지도에 그립니다. 자동차는 Kakao Mobility, 도보는 Tmap, 대중교통은 ODsay를 사용했습니다. 무료 호출 한도가 적기 때문에, 방문 순서를 정할 때는 직선거리 추정으로 계산하고 실제 API는 확정된 최종 경로에만 호출한 뒤 결과를 캐시했습니다.
 
 ## 기술 스택
 
@@ -51,37 +31,40 @@
 |---|---|
 | Frontend | React, Vite, Kakao Maps JS SDK |
 | Backend | FastAPI, OR-Tools |
-| LLM | Qwen2.5-3B QLoRA 파인튜닝 → GGUF → Ollama(`wtgmate-parser`) |
+| LLM | Qwen2.5-3B QLoRA 파인튜닝, GGUF로 변환해 Ollama에 등록(`wtgmate-parser`) |
 | 지도/경로 API | Kakao Local·Mobility, Tmap 보행자, ODsay 대중교통 |
-| 배포 | Docker / docker-compose, nginx (AWS 준비 완료) · Cloudflare Tunnel + Vercel (라이브) |
+| 배포 | Docker, docker-compose, nginx(AWS 준비), Cloudflare Tunnel + Vercel(라이브) |
 
 ## 로컬 실행
 
-**백엔드**
+백엔드는 다음과 같이 실행합니다.
+
 ```bash
 cd backend
-python -m venv venv && venv\Scripts\pip install -r requirements.txt   # (Windows)
-cp .env.example .env   # 키 채우기 (KAKAO_REST_API_KEY 필수, TMAP/ODSAY는 선택)
+python -m venv venv && venv\Scripts\pip install -r requirements.txt   # Windows
+copy .env.example .env   # 키 입력 (KAKAO_REST_API_KEY 필수, TMAP/ODSAY는 선택)
 venv\Scripts\python -m uvicorn main:app --port 8000
 ```
-LLM(장소 추출)을 쓰려면 [Ollama](https://ollama.com) 설치 후 GGUF로 모델 등록:
-`ollama create wtgmate-parser -f backend/finetune/Modelfile` (GGUF는 Colab 노트북으로 생성 — git 제외)
 
-**프론트엔드** (Kakao JS 키 도메인 때문에 5173 포트)
+장소 추출을 쓰려면 [Ollama](https://ollama.com)를 설치하고 파인튜닝한 GGUF로 모델을 등록합니다. GGUF는 용량이 커서 저장소에 포함하지 않았고 Colab 노트북으로 생성합니다.
+
+```bash
+ollama create wtgmate-parser -f backend/finetune/Modelfile
+```
+
+프론트엔드는 Kakao JS 키의 도메인 때문에 5173 포트에서 실행합니다.
+
 ```bash
 cd frontend
 npm install
-cp .env.example .env   # VITE_KAKAO_JAVASCRIPT_KEY 채우기
+copy .env.example .env   # VITE_KAKAO_JAVASCRIPT_KEY 입력
 npm run dev
 ```
 
 ## 배포
 
-- **Docker로 한 번에**: 루트에서 `docker compose up -d --build` (ollama + 모델 자동등록 + backend). 상세 [DEPLOY.md](DEPLOY.md)
-- **AWS EC2**: nginx + certbot(HTTPS) 런북 [DEPLOY.md](DEPLOY.md)
-- **비용 0 라이브**: Cloudflare Tunnel + Vercel [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md)
+Docker로 백엔드와 Ollama를 한 번에 띄우려면 저장소 루트에서 `docker compose up -d --build`를 실행합니다. AWS EC2에 올리는 방법과 nginx, HTTPS 설정은 [DEPLOY.md](DEPLOY.md)에 단계별로 정리했습니다. 비용 없이 라이브로 운영하는 Cloudflare Tunnel과 Vercel 방식은 [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md)에 있습니다.
 
-## 개발 기록
+## 개발 과정
 
-기능마다의 **고민 · 선택 · 이유 · 어려웠던 점**을 리빙 문서로 남겼다 → [DEVELOPMENT_JOURNEY.md](DEVELOPMENT_JOURNEY.md)
-(Gemini→로컬 모델 전환, 세 모드 목적함수 분리, 시간창 제약, 3종 실경로, 쿼터 최적화, 배포까지)
+기능마다 무엇을 고민했고 왜 그렇게 정했는지, 어떤 문제를 만나 어떻게 풀었는지를 [DEVELOPMENT_JOURNEY.md](DEVELOPMENT_JOURNEY.md)에 기록했습니다.
