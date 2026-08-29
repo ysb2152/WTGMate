@@ -1,6 +1,6 @@
 # WTGMate 경로 계산 검증 리포트
 
-- 생성 시각: (생략)
+- 생성 시각: 2026-08-26 04:25:11
 - 백엔드: `http://127.0.0.1:8000` (모델 `wtgmate-parser`)
 - 시나리오: 10개 x 이동수단 3(car/walk/transit) x 최적화 3(ai/shortest/priority) = 계산 90건
 - 현재 PC 시각(BLANK 출발시각 대체값): `04:24`
