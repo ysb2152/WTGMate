@@ -10,25 +10,25 @@
 
 ## 0. 업데이트 이력 (최신순)
 
-| 시점 | 구분 | 한 일 | 관련 |
-|---|---|---|---|
-| 2026-08-27 | deploy | 실제 라이브 배포 성공(https://wtg-mate.vercel.app). Vercel 프론트 + Cloudflare Tunnel로 개발 PC의 백엔드/Ollama 노출. 지도·추출·약속·지오코딩·경로 라이브 확인 | B-11 |
-| 2026-08-27 | test | solver·스케줄·캐시 단위 테스트 추가 + CI(백엔드 테스트/프론트 빌드) | PR #20 |
-| 2026-08-27 | deploy | AWS 배포 산출물 완비(Dockerfile·docker-compose·nginx·Modelfile) + Docker 빌드 CI. Cloudflare Tunnel + Vercel 런북 | B-11 |
-| 2026-08-27 | chore | 배포 준비 코드화: requirements.txt, 프론트 API주소·백엔드 CORS를 env로, .env.example 추가 | PR #12 |
-| 2026-08-27 | fix | Kakao 자동차 API가 실패해도 200으로 result_code만 주는 짧은 구간에서 summary KeyError 나던 것을 result_code 확인으로 정리 | PR #11 |
-| 2026-08-27 | perf/test | 배포용 정확도·성능 측정(최적화 최적성 통과, LLM 추출 6/6, 추정행렬 regret 평균 0.5분) 후 OR-Tools time_limit 5s를 2s로 | PR #10 |
-| 2026-08-27 | feat | 대중교통 실제 경로(ODsay `searchPubTransPathT`) 연동, 키 없으면 추정 폴백 | B-10 |
-| 2026-08-27 | perf | 실 경로 API 호출을 O(n²)에서 n-1로 축소(순서 최적화는 추정, 최종 경로만 실측) + leg 캐시 | B-9 |
-| 2026-08-27 | feat | 도보 실제 인도 경로(Tmap 보행자 경로안내 API) 연동, 키 없으면 추정 폴백 | B-9 |
-| 2026-08-26 | fix/test | `clamp_priority(0)`이 falsy로 3이 되던 버그 수정 + 헬퍼 유닛테스트 12개 | PR #7 |
-| 2026-08-26 | feat | 출발시각 미입력 시 약속 기준 추천 출발시각 역산 | B-8 |
-| 2026-08-26 | feat | 자동차 실제 도로 경로를 지도에 표시(Kakao Mobility 좌표열) | B-6 |
-| 2026-08-26 | feat | 출발시각 현재시간 기준 체크박스 + 미선택 시 시간계산 생략 | B-7 |
-| 2026-08-26 | test | 경로 계산 전수 검증 하네스 + 이동수단 재최적화 버그 발견·수정 | B-5 |
-| 2026-08-26 | feat | LLM 약속시각 자동추출(재파인튜닝) + 프론트 UX | B-4 |
-| ~2026-08-25 | feat | 시간 제약 스케줄링(출발시각·체류시간·약속시각·도착시각·위반경고) | B-3 |
-| ~2026-08-25 | refactor | Gemini에서 로컬 파인튜닝 모델(Ollama)로 전환 + 세 경로 모드 목적함수 차별화 | B-1, B-2 |
+| 구분 | 한 일 | 관련 |
+|---|---|---|
+| deploy | 실제 라이브 배포 성공(https://wtg-mate.vercel.app). Vercel 프론트 + Cloudflare Tunnel로 개발 PC의 백엔드/Ollama 노출. 지도·추출·약속·지오코딩·경로 라이브 확인 | B-11 |
+| test | solver·스케줄·캐시 단위 테스트 추가 + CI(백엔드 테스트/프론트 빌드) | PR #20 |
+| deploy | AWS 배포 산출물 완비(Dockerfile·docker-compose·nginx·Modelfile) + Docker 빌드 CI. Cloudflare Tunnel + Vercel 런북 | B-11 |
+| chore | 배포 준비 코드화: requirements.txt, 프론트 API주소·백엔드 CORS를 env로, .env.example 추가 | PR #12 |
+| fix | Kakao 자동차 API가 실패해도 200으로 result_code만 주는 짧은 구간에서 summary KeyError 나던 것을 result_code 확인으로 정리 | PR #11 |
+| perf/test | 배포용 정확도·성능 측정(최적화 최적성 통과, LLM 추출 6/6, 추정행렬 regret 평균 0.5분) 후 OR-Tools time_limit 5s를 2s로 | PR #10 |
+| feat | 대중교통 실제 경로(ODsay `searchPubTransPathT`) 연동, 키 없으면 추정 폴백 | B-10 |
+| perf | 실 경로 API 호출을 O(n²)에서 n-1로 축소(순서 최적화는 추정, 최종 경로만 실측) + leg 캐시 | B-9 |
+| feat | 도보 실제 인도 경로(Tmap 보행자 경로안내 API) 연동, 키 없으면 추정 폴백 | B-9 |
+| fix/test | `clamp_priority(0)`이 falsy로 3이 되던 버그 수정 + 헬퍼 유닛테스트 12개 | PR #7 |
+| feat | 출발시각 미입력 시 약속 기준 추천 출발시각 역산 | B-8 |
+| feat | 자동차 실제 도로 경로를 지도에 표시(Kakao Mobility 좌표열) | B-6 |
+| feat | 출발시각 현재시간 기준 체크박스 + 미선택 시 시간계산 생략 | B-7 |
+| test | 경로 계산 전수 검증 하네스 + 이동수단 재최적화 버그 발견·수정 | B-5 |
+| feat | LLM 약속시각 자동추출(재파인튜닝) + 프론트 UX | B-4 |
+| feat | 시간 제약 스케줄링(출발시각·체류시간·약속시각·도착시각·위반경고) | B-3 |
+| refactor | Gemini에서 로컬 파인튜닝 모델(Ollama)로 전환 + 세 경로 모드 목적함수 차별화 | B-1, B-2 |
 | 이전 | init | 초기 구현 및 포트폴리오 초안 | Part 0 |
 
 초안 대비 크게 바꾼 것은 세 가지입니다. 모델을 Gemini에서 로컬 파인튜닝 모델로 교체했고, AI 추천과 우선순위가 사실상 같은 결과를 내던 문제를 실제로 해결했으며, 약속 시각 같은 시간 제약을 구현했습니다.

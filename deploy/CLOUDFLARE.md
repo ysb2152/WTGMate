@@ -72,7 +72,7 @@ ALLOWED_ORIGINS=https://wtgmate.vercel.app
 
 ---
 
-## 상태 (2026-08-27)
+## 상태
 
 - ✅ quick tunnel로 백엔드 HTTPS 노출 검증됨(`/api/health` 200, kakao/tmap/odsay 모두 configured).
 - ⬜ 안정 URL(named tunnel, 본인 도메인) + Vercel 배포 + Kakao 도메인 등록 — 계정 작업이라 직접 진행.
