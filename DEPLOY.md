@@ -1,7 +1,7 @@
 # 배포 가이드 (AWS, 상시 라이브 데모)
 
 이 프로젝트를 AWS에 올려 **상시 접근 가능한 데모 URL**로 배포하기 위한 계획.
-포트폴리오 목적이므로 대규모 트래픽/오토스케일링은 고려하지 않는다.
+단일 인스턴스 데모 목적이므로 대규모 트래픽/오토스케일링은 고려하지 않는다.
 
 ## 아키텍처 개요
 
@@ -125,6 +125,6 @@ sudo certbot --nginx -d YOUR_DOMAIN
 
 ## 실제 라이브 데모는 Cloudflare Tunnel로 운영 (비용 절감)
 
-위 AWS 구성은 **배포 즉시 가능한 상태로 완비**해 두었으나(t3.medium 상시 ~$30/월), 포트폴리오 데모는
+위 AWS 구성은 **배포 즉시 가능한 상태로 완비**해 두었으나(t3.medium 상시 ~$30/월), 라이브 데모는
 비용 0의 **Cloudflare Tunnel + Vercel** 로 운영한다. 백엔드/Ollama는 개발 PC에서 그대로 돌고
 (모든 API 키가 이미 그 IP로 동작), Cloudflare Tunnel이 HTTPS로 노출한다. 상세는 `deploy/CLOUDFLARE.md`.
