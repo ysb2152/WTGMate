@@ -65,6 +65,14 @@ npm run dev
 
 Docker로 백엔드와 Ollama를 한 번에 띄우려면 저장소 루트에서 `docker compose up -d --build`를 실행한다. AWS EC2에 올리는 방법과 nginx, HTTPS 설정은 [DEPLOY.md](DEPLOY.md)에 단계별로 정리했다. 비용 없이 라이브로 운영하는 Cloudflare Tunnel과 Vercel 방식은 [deploy/CLOUDFLARE.md](deploy/CLOUDFLARE.md)에 있다.
 
+## 테스트
+
+세 최적화 모드와 스케줄 계산, 캐시 동작을 단위 테스트로 검증했다. 최적화 결과는 독립적인 완전탐색과 대조해 실제로 최적해를 내는지 확인한다. GitHub Actions에서 백엔드 테스트와 프론트 빌드, 백엔드 Docker 이미지 빌드를 자동으로 돌린다.
+
+```bash
+cd backend && python -m unittest discover -s tests -v
+```
+
 ## 개발 과정
 
 기능마다 무엇을 고민했고 왜 그렇게 정했는지, 어떤 문제를 만나 어떻게 풀었는지를 [DEVELOPMENT_JOURNEY.md](DEVELOPMENT_JOURNEY.md)에 기록했다.
