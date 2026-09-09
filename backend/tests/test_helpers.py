@@ -1,8 +1,7 @@
 """
-main.py의 순수 헬퍼 함수(clamp_priority, importance_score, haversine_distance_m)에 대한
-단위 테스트. 외부 API(Gemini/Kakao) 호출이 없는 로직만 다루므로 별도 키 설정 없이 실행 가능하다.
+순수 헬퍼(clamp_priority, importance_score, haversine_distance_m) 단위 테스트.
+외부 API 안 타는 로직이라 키 없이도 돌아감.
 
-실행 방법:
     cd backend
     python -m unittest discover -s tests -v
 """

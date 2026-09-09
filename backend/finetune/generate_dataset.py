@@ -1,21 +1,20 @@
 """
-1단계: Gemini를 "교사 모델"로 써서 파인튜닝용 합성 데이터를 생성한다.
+1단계: Gemini를 교사 모델로 써서 파인튜닝용 합성 데이터를 만든다.
 
-목표 태스크는 backend/main.py 의 /api/parse-tasks 와 완전히 동일하다:
-    자연어 일정 문장 -> 방문 장소 JSON 배열 (name, task, priority, lat, lng, address)
+태스크는 main.py의 /api/parse-tasks랑 똑같음:
+    자연어 일정 문장 -> 장소 JSON 배열 (name, task, priority, lat, lng, address)
 
-여기서 만든 데이터로 2단계(로컬 소형 모델 LoRA 파인튜닝)를 진행하고,
-학습이 끝나면 그 모델을 Ollama로 서빙해서 backend/main.py 의 Gemini 호출부를
-그대로 대체하는 것이 최종 목표다.
+이 데이터로 2단계에서 소형 모델 LoRA 파인튜닝하고, 학습된 모델을 Ollama로 서빙해서
+main.py의 Gemini 호출부를 대체하는 게 목표.
 
-사용법 (backend 디렉터리에서, venv 활성화 후):
+사용법 (backend에서 venv 켜고):
     python finetune/generate_dataset.py --count 200
 
-환경변수는 backend/.env 를 그대로 재사용한다 (GEMINI_API_KEY, GEMINI_MODEL).
+환경변수는 backend/.env 재사용 (GEMINI_API_KEY, GEMINI_MODEL).
 
 출력:
-    finetune/data/raw_examples.jsonl   - 생성된 원본 예시 (디버깅/검수용)
-    finetune/data/alpaca_dataset.jsonl - 2단계 LoRA 학습에 바로 넣을 수 있는 형식
+    data/raw_examples.jsonl   - 원본 예시(검수용)
+    data/alpaca_dataset.jsonl - LoRA 학습에 바로 넣는 형식
 """
 import argparse
 import json
@@ -32,8 +31,7 @@ DATA_DIR = BASE_DIR / "data"
 RAW_PATH = DATA_DIR / "raw_examples.jsonl"
 ALPACA_PATH = DATA_DIR / "alpaca_dataset.jsonl"
 
-# backend/main.py 의 parse_tasks 프롬프트 지시문과 완전히 동일하게 유지한다.
-# (파인튜닝 모델도 결국 같은 지시문으로 호출될 것이므로 학습/추론 프롬프트를 맞춰야 한다)
+# main.py parse_tasks 지시문이랑 똑같이 유지해야 함(학습/추론 프롬프트를 맞춰야 함).
 TASK_INSTRUCTION = """아래 일정 문장에서 방문해야 할 장소를 모두 추출해 JSON 배열로 반환해줘.
 
 각 항목은 반드시 다음 필드를 가져야 한다.
@@ -84,7 +82,7 @@ GEN_PROMPT_TEMPLATE = """너는 LLM 파인튜닝용 학습 데이터를 만드�
 
 
 def valid_appointment_time(value) -> bool:
-    """appointment_time은 null(없음) 또는 정상 범위의 'HH:MM' 문자열만 허용한다."""
+    """appointment_time은 null이거나 정상 범위 'HH:MM'만 허용."""
     if value is None:
         return True
     if not isinstance(value, str):
@@ -175,7 +173,7 @@ def main():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 이미 만든 input은 중복 생성하지 않도록 이어쓰기 지원
+    # 이미 만든 input은 중복 안 만들게 이어쓰기 지원
     seen_inputs = set()
     if RAW_PATH.exists():
         with RAW_PATH.open(encoding="utf-8") as f:
@@ -203,7 +201,7 @@ def main():
                 except Exception as e:
                     msg = str(e)
                     if "GenerateRequestsPerDayPerProjectPerModel" in msg:
-                        # 일일 쿼터 소진: 재시도해도 오늘은 안 풀리므로 즉시 중단
+                        # 일일 쿼터 소진이면 재시도해도 오늘은 안 되니 바로 중단
                         print(f"  [중단] '{model_name}' 모델의 무료 일일 쿼터를 모두 썼습니다.")
                         print(f"  누적 {collected}개까지 저장됨. 다른 모델(--model)을 쓰거나 내일 다시 시도하세요.")
                         return

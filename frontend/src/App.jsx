@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-// 배포 시 VITE_API_BASE_URL로 주입한다(예: nginx가 같은 도메인에서 /api를 프록시하면 '' = 상대경로).
-// 값이 없으면 로컬 개발용 백엔드로 폴백한다.
+// 배포 땐 VITE_API_BASE_URL로 주입(nginx가 같은 도메인에서 /api 프록시하면 ''로). 없으면 로컬 백엔드.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000';
 
 const emptyRouteResult = {
@@ -11,8 +10,7 @@ const emptyRouteResult = {
   legs: [],
 };
 
-// "HH:MM"(24시간제) -> 오전/오후·시(1~12)·분 드롭다운 상태로 분해.
-// 값이 없으면 셋 다 빈 문자열(미선택).
+// "HH:MM" -> 오전/오후·시(1~12)·분 드롭다운 상태로 분해. 값 없으면 셋 다 빈 문자열.
 const apptPartsFromHHMM = (hhmm) => {
   if (!hhmm || typeof hhmm !== 'string' || !hhmm.includes(':')) {
     return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
@@ -22,7 +20,7 @@ const apptPartsFromHHMM = (hhmm) => {
     return { appt_meridiem: '', appt_hour: '', appt_minute: '' };
   }
   const meridiem = h < 12 ? '오전' : '오후';
-  const hour12 = h % 12 === 0 ? 12 : h % 12; // 0시->12(오전 12시), 12시->12(오후 12시=정오)
+  const hour12 = h % 12 === 0 ? 12 : h % 12; // 0시->12, 12시->12(정오)
   return { appt_meridiem: meridiem, appt_hour: String(hour12), appt_minute: String(m) };
 };
 
@@ -35,10 +33,9 @@ const toLocation = (place, task = '방문', priority = 3) => ({
   address: place.road_address_name || place.address_name || '',
   duration_min: 0,
   appointment_time: null,
-  // 약속 시각을 LLM이 산문에서 자동 추출했는지 표시(뱃지용). 사용자가 직접 수정하면 false로 내린다.
+  // LLM이 자동 추출한 약속시각인지(뱃지용). 사용자가 직접 고치면 false로 내림.
   appointment_from_ai: false,
-  // 약속 시각 입력용 오전/오후·시·분 드롭다운 상태(출발 예정 시각과 동일한 방식).
-  // appointment_time("HH:MM")은 이 셋에서 파생한다.
+  // 약속시각 입력용 드롭다운 상태. appointment_time("HH:MM")은 이 셋에서 만들어짐.
   appt_meridiem: '',
   appt_hour: '',
   appt_minute: '',
@@ -185,7 +182,7 @@ function App() {
     address: '',
   });
 
-  // "일정 자체"를 보관한다. 현재 선택된 경로 순서와 분리한다.
+  // '일정 자체'. 계산된 경로 순서와는 따로 관리.
   const [locations, setLocations] = useState([]);
   const [inputText, setInputText] = useState('');
 
@@ -204,18 +201,17 @@ function App() {
   const [activeRoute, setActiveRoute] = useState('ai');
   const [started, setStarted] = useState(false);
 
-  // 예상 출발 시각("HH:MM", 24시간제). 비워두면 시간 제약/도착시각 계산을 하지 않는다.
+  // 출발 예정 시각("HH:MM"). 비우면 시간 제약/도착시각 계산 안 함.
   const [startTime, setStartTime] = useState('');
-  // 출발 시각을 오전/오후 · 시(1~12) · 분(0~59) 세 드롭다운으로 입력받는다.
-  // 셋 중 하나라도 미선택('')이면 startTime을 비워 시간 제약을 끈다.
+  // 오전오후 · 시 · 분 드롭다운. 하나라도 비면 startTime을 비워서 시간 제약 끔.
   const [startMeridiem, setStartMeridiem] = useState(''); // '오전' | '오후'
   const [startHour, setStartHour] = useState('');         // '1'~'12'
   const [startMinute, setStartMinute] = useState('');     // '0'~'59'
-  // 체크 시 출발 시각을 현재 PC 시각으로 계산한다. 기본은 미체크(현재시각을 몰래 강제하지 않음).
-  // 미체크 + 출발시각 미선택이면 시간 계산 자체를 하지 않는다(도착시각/지각 표시 없음).
+  // 체크하면 현재 PC 시각으로. 기본은 미체크(현재시각 몰래 강제 안 함).
+  // 미체크 + 출발시각 미선택이면 시간 계산 자체를 안 함.
   const [useCurrentTime, setUseCurrentTime] = useState(false);
 
-  // 세 결과는 서로 덮어쓰지 않는다.
+  // 세 모드 결과를 따로 보관(서로 안 덮어씀).
   const [routeResults, setRouteResults] = useState({
     ai: null,
     shortest: null,
@@ -229,7 +225,7 @@ function App() {
   const polylineInstance = useRef(null);
   const markersRef = useRef([]);
 
-  // 일정이 바뀌면 이전 경로 캐시를 무효화한다.
+  // 일정 바뀌면 이전 경로 캐시를 무효화하려고 만든 키.
   const scheduleKey = useMemo(() => {
     const startKey = [
       startLocation?.name || '',
@@ -252,8 +248,7 @@ function App() {
     return `${startKey}###${locationsKey}`;
   }, [startLocation, locations]);
 
-  // 두 경로가 "완전히 같은 방문 순서"인지 비교하기 위한 키.
-  // 이름/좌표가 순서대로 전부 같으면 같은 경로로 취급한다.
+  // 두 경로가 방문 순서까지 똑같은지 비교하는 키(이름+좌표 순서대로).
   const routeSequenceKey = (locs) =>
     (locs || [])
       .map((loc) =>
@@ -418,7 +413,7 @@ function App() {
   };
 
   // -------------------------------
-  // Gemini 장소 추출
+  // 장소 추출
   // -------------------------------
   const handleParseText = async () => {
     if (!inputText.trim()) {
@@ -449,14 +444,12 @@ function App() {
 
       const parsedList = (Array.isArray(data.data) ? data.data : []).map((item) => ({
         ...item,
-        // 체류 시간(분): 사용자가 확인 단계에서 조정. 기본 30분.
+        // 체류시간 기본 30분(확인 단계에서 조정).
         duration_min: Number(item.duration_min) > 0 ? Number(item.duration_min) : 30,
-        // 약속 시각: LLM이 추출했으면 그 값, 없으면 사용자가 확인 단계에서 입력.
+        // 약속시각은 LLM이 뽑았으면 그 값, 없으면 사용자가 나중에 입력.
         appointment_time: item.appointment_time || null,
-        // 값이 LLM에서 왔으면 뱃지로 알려준다(사용자 수정 시 updateAppointmentPart에서 내림).
-        appointment_from_ai: Boolean(item.appointment_time),
-        // 드롭다운 상태도 LLM 값에서 분해해 채운다.
-        ...apptPartsFromHHMM(item.appointment_time),
+        appointment_from_ai: Boolean(item.appointment_time), // LLM에서 온 값이면 뱃지 표시
+        ...apptPartsFromHHMM(item.appointment_time),          // 드롭다운도 그 값에서 채움
       }));
 
       if (!parsedList.length) {
@@ -541,9 +534,8 @@ function App() {
           old.task || '방문',
           Number(old.priority) || 3
         ),
-        // 후보 교체는 좌표/주소만 바꾸는 것이므로, 사용자가 입력한
-        // 체류 시간과 약속 시각은 그대로 유지한다. (toLocation이 이 둘을
-        // 기본값 0/null로 덮어쓰기 때문에 여기서 old 값으로 되살린다)
+        // 후보 교체는 좌표/주소만 바꾸는 거라 체류시간/약속시각은 유지.
+        // (toLocation이 0/null로 덮어써서 여기서 old 값으로 되살림)
         duration_min: old.duration_min ?? 0,
         appointment_time: old.appointment_time ?? null,
         appointment_from_ai: old.appointment_from_ai ?? false,
@@ -591,8 +583,7 @@ function App() {
       }
 
       const legs = Array.isArray(data.legs) ? data.legs : [];
-      // 각 leg의 실제 경로 좌표열(자동차=도로, 도보=인도, 대중교통=정류장)을 순서대로 이어붙인다
-      // ([[lat,lng],...]). 실 API 실패로 path가 비면 빈 배열이 되어 지도에서 직선 폴백된다.
+      // 각 leg의 실제 경로 좌표를 순서대로 이어붙임. path가 비면 지도에서 직선 폴백됨.
       const routePath = legs.flatMap((l) => (Array.isArray(l.path) ? l.path : []));
 
       return {
@@ -603,15 +594,15 @@ function App() {
         routePath,
         estimated: Boolean(data.estimated),
         travelMode: mode,
-        // 출발 시각을 입력했을 때만 채워지는 시간축 정보.
+        // 출발시각을 넣었을 때만 채워지는 시간축 정보.
         startTimeUsed: data.start_time || null,
         finishTime: data.finish_time || null,
         totalElapsedMin: data.total_elapsed_min ?? null,
-        // 출발시각 미입력(③)인데 약속이 있어 백엔드가 역산한 '추천 출발시각'.
+        // 출발시각 안 넣고 약속만 있을 때 백엔드가 역산해준 추천 출발시각.
         recommendedStartTime: data.recommended_start_time || null,
         recommendedFeasible: data.recommended_feasible ?? null,
         stops: Array.isArray(data.stops) ? data.stops : null,
-        appointmentViolations: Array.isArray(data.appointment_violations)
+        appointmentViolations: Array.isArray(data.appointment_violations) // 지각한 장소 이름들
           ? data.appointment_violations
           : [],
       };
@@ -627,15 +618,15 @@ function App() {
   // -------------------------------
   // 경로 계산 공통 함수
   // -------------------------------
-  // travelModeArg: setTravelMode가 비동기라, 이동수단을 막 바꾼 직후 호출할 때
-  // 최신 이동수단을 명시적으로 넘기기 위한 인자(생략하면 현재 상태값 사용).
+  // travelModeArg: setTravelMode가 비동기라 이동수단 막 바꾼 직후엔 상태가 옛 값이라,
+  // 최신 값을 직접 넘기려고 둔 인자(생략하면 현재 상태 사용).
   const calculateRoute = async (mode, { force = false, travelModeArg = travelMode } = {}) => {
     if (locations.length < 1) {
       alert('방문할 장소가 1개 이상 필요합니다.');
       return;
     }
 
-    // 같은 일정 + 같은 이동수단에 대한 결과가 있으면 캐시 사용
+    // 같은 일정 + 같은 이동수단 결과가 있으면 그냥 씀
     const cached = routeResults[mode];
 
     if (!force && cached) {
@@ -686,10 +677,8 @@ function App() {
         throw new Error('경로 결과가 올바르지 않습니다.');
       }
 
-      // 다른 모드가 이미 완전히 동일한 방문 순서를 계산해뒀다면,
-      // 카카오 실시간 API를 또 호출하지 않고 그 결과를 그대로 재사용한다.
-      // (같은 순서인데 API를 두 번 따로 부르면 실시간 교통상황 반영 때문에
-      //  거리/시간 숫자가 미세하게 달라지는 문제를 방지)
+      // 다른 모드가 이미 똑같은 순서를 계산해놨으면 실 API 또 안 부르고 그 결과 재사용.
+      // (같은 순서인데 두 번 부르면 실시간 교통 때문에 거리/시간이 미묘하게 달라짐)
       const newSequenceKey = routeSequenceKey(orderedList);
       const reusableEntry = Object.entries(routeResults).find(
         ([otherMode, otherResult]) =>
@@ -732,9 +721,8 @@ function App() {
     calculateRoute('priority', { force: true });
   };
 
-  // 이동수단이 바뀌면 최적 방문 순서 자체가 달라질 수 있으므로(예: 도보는 직선거리 기반),
-  // 기존 순서에 ETA만 다시 구하지 않고, 캐시를 비운 뒤 현재 선택된 모드를 새 이동수단으로
-  // "재최적화"한다. 나머지 모드는 캐시를 비워 다음에 선택할 때 새로 계산되게 한다.
+  // 이동수단 바뀌면 최적 순서 자체가 달라질 수 있어서(속도/보정계수가 다름), ETA만 다시 구하는 게
+  // 아니라 캐시 비우고 현재 모드를 새 이동수단으로 재최적화. 나머지 모드는 캐시만 비움.
   const handleTravelModeChange = async (newMode) => {
     if (newMode === travelMode) return;
 
@@ -743,12 +731,10 @@ function App() {
 
     setTravelMode(newMode);
     setRouteResults({ ai: null, shortest: null, priority: null });
-    // 캐시를 비웠으므로 우선순위 경로도 재계산 필요 상태로 둔다(선택 시 새로 계산되도록).
-    // 아래에서 활성 모드가 priority면 calculateRoute가 다시 false로 되돌린다.
+    // 캐시 비웠으니 우선순위 경로도 재계산 필요 상태로. (활성 모드가 priority면 아래서 다시 false로 됨)
     setIsPriorityDirty(true);
 
-    // 이미 경로를 계산해 보여주고 있었을 때만 즉시 재최적화한다.
-    // (setTravelMode가 비동기이므로 최신 이동수단을 travelModeArg로 명시해서 넘긴다.)
+    // 이미 경로 보여주고 있을 때만 바로 재최적화. (비동기라 새 이동수단을 직접 넘김)
     if (hadRoute) {
       await calculateRoute(modeToRecalc, { force: true, travelModeArg: newMode });
     }
@@ -773,8 +759,7 @@ function App() {
       return updated;
     });
 
-    // 사용자 우선순위 경로만 무효화.
-    // AI/최단 결과는 그대로 보존한다.
+    // 우선순위 경로만 무효화(AI/최단은 그대로 둠).
     setRouteResults((prev) => ({
       ...prev,
       priority: null,
@@ -784,32 +769,28 @@ function App() {
     setActiveRoute('priority');
   };
 
-  // 체류 시간(분)과 약속 시각은 모든 모드의 스케줄에 영향을 주므로,
-  // 값이 바뀌면 캐시된 세 경로 결과를 전부 무효화한다.
+  // 체류시간/약속시각은 모든 모드 스케줄에 영향이라, 바뀌면 세 결과 전부 무효화.
   const invalidateAllRoutes = () => {
     setRouteResults({ ai: null, shortest: null, priority: null });
     setIsPriorityDirty(false);
   };
 
-  // 오전/오후 · 시(1~12) · 분을 24시간제 "HH:MM"으로 합친다.
-  // 하나라도 미선택이면 '' (시간 제약 없음).
+  // 오전오후 · 시 · 분을 "HH:MM"으로 합침. 하나라도 비면 ''(시간 제약 없음).
   const composeStartTime = (meridiem, hour12, minute) => {
     if (!meridiem || hour12 === '' || minute === '') return '';
-    let hour = Number(hour12) % 12;         // 12시 -> 0
-    if (meridiem === '오후') hour += 12;     // 오후 -> +12 (오후 12시는 정오 12시)
+    let hour = Number(hour12) % 12;         // 12 -> 0
+    if (meridiem === '오후') hour += 12;     // 오후는 +12 (오후 12시=정오)
     return `${String(hour).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
   };
 
-  // 현재 PC 시각을 24시간제 "HH:MM"으로 반환.
+  // 현재 PC 시각을 "HH:MM"으로.
   const currentHHMM = () => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
-  // 백엔드에 보낼 출발 시각을 결정한다.
-  // ① '현재 시간 기준' 체크 -> 현재 PC 시각
-  // ② 미체크 + 출발시각 드롭다운 선택 -> 그 시각
-  // ③ 미체크 + 미선택 -> null (도착시각/지각 계산 안 함. 단 약속시각 순서는 백엔드가 지켜줌)
+  // 백엔드에 보낼 출발시각 결정.
+  // 현재시각 체크 -> PC 시각 / 드롭다운 선택 -> 그 시각 / 둘 다 아니면 null(약속 순서는 백엔드가 지켜줌).
   const effectiveStartTime = () => {
     if (useCurrentTime) return currentHHMM();
     return startTime || null;
@@ -837,7 +818,7 @@ function App() {
     invalidateAllRoutes();
   };
 
-  // 역산으로 추천된 출발 시각("HH:MM")을 실제 출발시각 드롭다운에 채워 확정한다(③ -> ②).
+  // 역산 추천 출발시각을 실제 드롭다운에 채워서 확정.
   const applyRecommendedStartTime = (hhmm) => {
     const parts = apptPartsFromHHMM(hhmm); // {appt_meridiem, appt_hour, appt_minute}
     if (!parts.appt_hour) return;
@@ -846,7 +827,7 @@ function App() {
     setStartHour(parts.appt_hour);
     setStartMinute(parts.appt_minute);
     setStartTime(hhmm);
-    invalidateAllRoutes(); // 새 출발시각으로 다시 계산하도록 캐시 비움
+    invalidateAllRoutes(); // 새 출발시각으로 다시 계산
   };
 
   const updateDuration = (index, value) => {
@@ -862,8 +843,7 @@ function App() {
     invalidateAllRoutes();
   };
 
-  // 약속 시각 드롭다운(오전오후/시/분) 한 칸을 바꾼다. 셋이 다 채워졌을 때만
-  // appointment_time("HH:MM")이 만들어지고(composeStartTime 재사용), 하나라도 비면 null.
+  // 약속시각 드롭다운 한 칸 변경. 셋 다 차야 appointment_time이 생기고(composeStartTime 재사용), 하나라도 비면 null.
   const updateAppointmentPart = (index, part, value) => {
     setLocations((prev) => {
       const updated = [...prev];
@@ -879,7 +859,7 @@ function App() {
         ...loc,
         ...next,
         appointment_time: composeStartTime(next.appt_meridiem, next.appt_hour, next.appt_minute) || null,
-        // 사용자가 직접 손대면 더 이상 'AI 자동입력'이 아니므로 뱃지를 내린다.
+        // 직접 손대면 더 이상 AI 자동입력 아니니까 뱃지 내림.
         appointment_from_ai: false,
       };
       return updated;
@@ -945,8 +925,7 @@ function App() {
       bounds.extend(position);
     });
 
-    // 실제 경로 좌표열(routePath)이 있으면 그걸 따라 그리고(자동차·도보·대중교통 공통),
-    // 없으면(실 API 미사용/실패·경로 미계산) 지점 간 직선으로 폴백한다.
+    // routePath(실제 경로 좌표) 있으면 그걸 따라 그리고, 없으면 지점 간 직선으로 폴백.
     const hasRealPath = Array.isArray(routePath) && routePath.length > 1;
     const drawPath = hasRealPath
       ? routePath
