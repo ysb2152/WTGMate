@@ -1,7 +1,7 @@
-"""최종 경로 leg 캐시(get_final_leg)의 동작 검증.
+"""최종 경로 leg 캐시(get_final_leg) 테스트.
 
-실 API를 흉내 내는 가짜 함수를 주입해, 캐시 히트/미스·LRU 상한·TTL 만료·
-폴백(path 없음) 미캐시를 외부 호출 없이 검증한다.
+실 API를 가짜 함수로 갈아끼워서 캐시 히트/미스, LRU 상한, TTL 만료,
+폴백(path 없음) 미캐시를 외부 호출 없이 확인.
 """
 import asyncio
 import os

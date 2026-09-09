@@ -1,10 +1,7 @@
-"""경로 최적화 solver(solve_shortest / solve_priority / solve_ai)와 스케줄 계산
-(build_schedule / recommended_departure)에 대한 단위 테스트.
+"""최적화 solver(solve_shortest/priority/ai)랑 스케줄 계산(build_schedule/recommended_departure) 테스트.
 
-독립적인 완전탐색(브루트포스) 결과와 대조해 solver가 실제로 최적해를 내는지 검증한다.
-외부 API 호출 없이 순수 계산만 다루므로 키 없이 실행 가능하다.
+완전탐색 결과랑 대조해서 solver가 진짜 최적해를 내는지 확인. 순수 계산이라 키 없이 돌아감.
 
-실행:
     cd backend
     python -m unittest discover -s tests -v
 """
@@ -30,7 +27,7 @@ from main import (
 
 
 def loc(name, priority=3, appt=None, dwell=0):
-    # 좌표는 solver 계산에 쓰이지 않으므로(행렬을 직접 주입) 더미값.
+    # 행렬을 직접 주입하니까 좌표는 안 쓰임. 더미값.
     return LocationItem(name=name, task="t", priority=priority, lat=37.5, lng=127.0,
                         appointment_time=appt, duration_min=dwell)
 
